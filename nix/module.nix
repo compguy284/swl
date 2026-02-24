@@ -12,8 +12,18 @@ in
     package = lib.mkPackageOption self.packages.${pkgs.stdenv.hostPlatform.system} "swl" {
       default = "default";
       extraDescription = ''
-        Override to use a custom config.h or enable XWayland, e.g.:
+        Override to enable XWayland, e.g.:
         `self.packages.''${system}.default.override { enableXWayland = true; }`
+      '';
+    };
+
+    configFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.path;
+      default = null;
+      description = ''
+        Path to a TOML configuration file for swl.
+        If null, swl will search the default XDG config path
+        or use built-in defaults.
       '';
     };
 
@@ -62,7 +72,7 @@ in
         ${cfg.extraSessionCommands}
         systemctl --user import-environment DISPLAY WAYLAND_DISPLAY
         systemctl --user start swl-session.target
-        exec ${lib.getExe cfg.package}
+        exec ${lib.getExe cfg.package}${lib.optionalString (cfg.configFile != null) " -c ${cfg.configFile}"}
       '';
     };
 

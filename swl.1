@@ -8,6 +8,7 @@
 .Nm
 .Op Fl v
 .Op Fl d
+.Op Fl c Ar config
 .Op Fl s Ar startup command
 .Sh DESCRIPTION
 .Nm
@@ -21,6 +22,23 @@ When given the
 option,
 .Nm
 writes its name and version to standard error and exits unsuccessfully.
+.Pp
+When given the
+.Fl c
+option,
+.Nm
+loads configuration from the specified TOML file instead of the default
+search path. If no
+.Fl c
+option is given,
+.Nm
+searches for
+.Pa config.toml
+in
+.Ev $XDG_CONFIG_HOME Ns /swl/
+and
+.Pa ~/.config/swl/ .
+If no configuration file is found, built-in defaults are used.
 .Pp
 When given the
 .Fl d
@@ -41,8 +59,10 @@ to the child process group and waits for it to exit.
 .Pp
 Users are encouraged to customize
 .Nm
-by editing the sources, in particular
-.Pa config.h .
+by creating a configuration file at
+.Pa ~/.config/swl/config.toml .
+A reference configuration is installed at
+.Pa $PREFIX/share/swl/default.toml .
 The default key bindings are as follows:
 .Bl -tag -width 20n -offset indent -compact
 .It Mod-[1-9]
@@ -215,9 +235,12 @@ These environment variables are used by
 .It Ev XDG_RUNTIME_DIR
 A directory where temporary user files, such as the Wayland socket,
 are stored.
-.It Ev XDG_CONFIG_DIR
-A directory containing configuration of various programs and
-libraries, including libxkbcommon.
+.It Ev XDG_CONFIG_HOME
+A directory containing user configuration files.
+.Nm
+searches for
+.Pa swl/config.toml
+in this directory.
 .It Ev DISPLAY , WAYLAND_DISPLAY , WAYLAND_SOCKET
 Tell how to connect to an underlying X11 or Wayland server.
 .It Ev WLR_*

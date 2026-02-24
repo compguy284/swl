@@ -1,0 +1,235 @@
+# swl default configuration
+# Copy to ~/.config/swl/config.toml and customize.
+# Values not present in this file will use built-in defaults.
+
+[general]
+sloppy_focus = true
+bypass_surface_visibility = false
+tag_count = 9
+
+[appearance]
+border_width = 1
+root_color = "0x222222ff"
+border_color = "0x444444ff"
+focus_color = "0x005577ff"
+urgent_color = "0xff0000ff"
+fullscreen_bg = "0x000000ff"
+
+[keyboard]
+repeat_rate = 25
+repeat_delay = 600
+# XKB rule names (uncomment to customize):
+# rules = ""
+# model = ""
+# layout = "us"
+# variant = ""
+# options = ""
+
+[trackpad]
+tap_to_click = true
+tap_and_drag = true
+drag_lock = true
+natural_scrolling = false
+disable_while_typing = true
+left_handed = false
+middle_button_emulation = false
+scroll_method = "two_finger"
+click_method = "button_areas"
+accel_profile = "adaptive"
+accel_speed = 0.0
+button_map = "lrm"
+
+[commands]
+mod_key = "alt"
+terminal = ["foot"]
+menu = ["wmenu-run"]
+
+[[layout]]
+symbol = "[]="
+arrange = "tile"
+
+[[layout]]
+symbol = "><>"
+
+[[layout]]
+symbol = "[M]"
+arrange = "monocle"
+
+[[monitor]]
+mfact = 0.55
+nmaster = 1
+scale = 1.0
+layout = "[]="
+transform = "normal"
+
+# Window rules (examples, commented out):
+# [[rule]]
+# app_id = "firefox"
+# tags = 256
+#
+# [[rule]]
+# app_id = "Gimp"
+# floating = true
+
+# Key bindings
+# Modifier names: "mod" (resolves to mod_key), "shift", "ctrl", "alt", "super"
+# Key names: XKB keysym names (e.g., "p", "Return", "space", "Tab")
+
+[[bind.key]]
+mods = ["mod"]
+key = "p"
+action = "spawn"
+arg = "menu"
+
+[[bind.key]]
+mods = ["mod", "shift"]
+key = "Return"
+action = "spawn"
+arg = "terminal"
+
+[[bind.key]]
+mods = ["mod"]
+key = "j"
+action = "focusstack"
+arg = "1"
+
+[[bind.key]]
+mods = ["mod"]
+key = "k"
+action = "focusstack"
+arg = "-1"
+
+[[bind.key]]
+mods = ["mod"]
+key = "i"
+action = "incnmaster"
+arg = "1"
+
+[[bind.key]]
+mods = ["mod"]
+key = "d"
+action = "incnmaster"
+arg = "-1"
+
+[[bind.key]]
+mods = ["mod"]
+key = "h"
+action = "setmfact"
+arg = "-0.05"
+
+[[bind.key]]
+mods = ["mod"]
+key = "l"
+action = "setmfact"
+arg = "0.05"
+
+[[bind.key]]
+mods = ["mod"]
+key = "Return"
+action = "zoom"
+
+[[bind.key]]
+mods = ["mod"]
+key = "Tab"
+action = "view"
+
+[[bind.key]]
+mods = ["mod", "shift"]
+key = "c"
+action = "killclient"
+
+[[bind.key]]
+mods = ["mod"]
+key = "t"
+action = "setlayout"
+arg = "[]="
+
+[[bind.key]]
+mods = ["mod"]
+key = "f"
+action = "setlayout"
+arg = "><>"
+
+[[bind.key]]
+mods = ["mod"]
+key = "m"
+action = "setlayout"
+arg = "[M]"
+
+[[bind.key]]
+mods = ["mod"]
+key = "space"
+action = "setlayout"
+
+[[bind.key]]
+mods = ["mod", "shift"]
+key = "space"
+action = "togglefloating"
+
+[[bind.key]]
+mods = ["mod"]
+key = "e"
+action = "togglefullscreen"
+
+[[bind.key]]
+mods = ["mod"]
+key = "0"
+action = "view"
+arg = "all"
+
+[[bind.key]]
+mods = ["mod", "shift"]
+key = "parenright"
+action = "tag"
+arg = "all"
+
+[[bind.key]]
+mods = ["mod"]
+key = "comma"
+action = "focusmon"
+arg = "left"
+
+[[bind.key]]
+mods = ["mod"]
+key = "period"
+action = "focusmon"
+arg = "right"
+
+[[bind.key]]
+mods = ["mod", "shift"]
+key = "less"
+action = "tagmon"
+arg = "left"
+
+[[bind.key]]
+mods = ["mod", "shift"]
+key = "greater"
+action = "tagmon"
+arg = "right"
+
+[[bind.key]]
+mods = ["mod", "shift"]
+key = "q"
+action = "quit"
+
+# Note: Tag bindings (Mod+1-9, Mod+Shift+!-() and CHVT bindings
+# (Ctrl+Alt+F1-F12) are auto-generated based on tag_count.
+# Ctrl+Alt+Backspace -> quit is also auto-generated.
+
+# Mouse bindings
+[[bind.mouse]]
+mods = ["mod"]
+button = "left"
+action = "moveresize"
+arg = "move"
+
+[[bind.mouse]]
+mods = ["mod"]
+button = "middle"
+action = "togglefloating"
+
+[[bind.mouse]]
+mods = ["mod"]
+button = "right"
+action = "moveresize"
+arg = "resize"

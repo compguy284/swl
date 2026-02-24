@@ -27,7 +27,6 @@
           , xcbutilwm
           , xwayland
           , enableXWayland ? false
-          , configH ? null
           }:
 
           stdenv.mkDerivation {
@@ -37,20 +36,17 @@
             src = lib.fileset.toSource {
               root = ./.;
               fileset = lib.fileset.unions [
-                ./Makefile
-                ./config.mk
-                ./config.def.h
-                ./client.h
-                ./swl.c
+                ./meson.build
+                ./meson.options
+                ./src
+                ./protocols
+                ./config
+                ./subprojects
                 ./swl.1
                 ./swl.desktop
-                ./util.c
-                ./util.h
-                ./protocols
               ];
             };
 
-            __structuredAttrs = true;
             strictDeps = true;
 
             outputs = [ "out" "man" ];
@@ -59,6 +55,8 @@
               installShellFiles
               pkg-config
               wayland-scanner
+              pkgs.meson
+              pkgs.ninja
             ];
 
             buildInputs = [
@@ -74,19 +72,9 @@
               xwayland
             ];
 
-            makeFlags = [
-              "PKG_CONFIG=${stdenv.cc.targetPrefix}pkg-config"
-              "WAYLAND_SCANNER=wayland-scanner"
-              "PREFIX=$(out)"
-              "MANDIR=$(man)/share/man"
-            ] ++ lib.optionals enableXWayland [
-              "XWAYLAND=-DXWAYLAND"
-              "XLIBS=xcb xcb-icccm"
+            mesonFlags = lib.optionals enableXWayland [
+              "-Dxwayland=enabled"
             ];
-
-            postPatch = lib.optionalString (configH != null) ''
-              cp ${configH} config.h
-            '';
 
             passthru = {
               inherit enableXWayland;
