@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <wayland-server-core.h>
@@ -108,8 +109,8 @@ swl_server_setup(SwlServer *server)
 				server->config.blur_saturation);
 	server->root_bg = wlr_scene_rect_create(&server->scene->tree, 0, 0,
 			server->config.rootcolor);
-	for (i = 0; i < NUM_LAYERS; i++)
-		server->layers[i] = wlr_scene_tree_create(&server->scene->tree);
+	for (unsigned int li = 0; li < NUM_LAYERS; li++)
+		server->layers[li] = wlr_scene_tree_create(&server->scene->tree);
 	server->drag_icon = wlr_scene_tree_create(&server->scene->tree);
 	wlr_scene_node_place_below(&server->drag_icon->node,
 			&server->layers[LyrBlock]->node);
@@ -431,8 +432,19 @@ swl_server_cleanup(SwlServer *server)
 #endif
 	wl_display_destroy_clients(server->dpy);
 	if (server->child_pid > 0) {
+		/* Reset SIGCHLD to default to prevent the handler from reaping
+		 * child_pid before we can waitpid for it */
+		signal(SIGCHLD, SIG_DFL);
 		kill(-server->child_pid, SIGTERM);
+		/* Poll with timeout, escalate to SIGKILL if child won't die */
+		for (int attempts = 0; attempts < 50; attempts++) {
+			if (waitpid(server->child_pid, nullptr, WNOHANG) != 0)
+				goto reaped;
+			nanosleep(&(struct timespec){.tv_nsec = 20000000}, nullptr); /* 20ms, up to 1s total */
+		}
+		kill(-server->child_pid, SIGKILL);
 		waitpid(server->child_pid, nullptr, 0);
+	reaped:;
 	}
 	wlr_xcursor_manager_destroy(server->cursor_mgr);
 
