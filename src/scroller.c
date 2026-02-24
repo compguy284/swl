@@ -83,7 +83,7 @@ swl_scroller(SwlServer *server, Monitor *m)
 		}
 	}
 	if (fi < 0)
-		fi = 0;
+		goto position; /* focused client is floating; keep current scroll_x */
 
 	int focused_vx = vx[fi];
 	int focused_vw = vw[fi];
@@ -124,6 +124,7 @@ swl_scroller(SwlServer *server, Monitor *m)
 		break;
 	}
 
+position:
 	/* Position and clip each client */
 	for (i = 0; i < n; i++) {
 		c = cols[i];
