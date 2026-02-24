@@ -14,6 +14,7 @@
 #include "commands.h"
 #include "layout.h"
 #include "macros.h"
+#include "scroller.h"
 
 /* Taken from https://github.com/djpohly/dwl/issues/466 */
 #define COLOR(hex)    { ((hex >> 24) & 0xFF) / 255.0f, \
@@ -169,6 +170,14 @@ swl_config_defaults(SwlConfig *config)
 	/* Mouse bindings */
 	config->buttons = default_buttons;
 	config->buttons_count = LENGTH(default_buttons);
+
+	/* Scroller layout */
+	config->scroller_default_width = 0.5f;
+	static float default_presets[] = { 0.5f, 0.67f, 1.0f };
+	config->scroller_preset_widths = default_presets;
+	config->scroller_preset_count = LENGTH(default_presets);
+	config->scroller_center = ScrollCenterNever;
+	config->scroller_center_single = false;
 }
 
 /* =====================================================================
@@ -217,11 +226,13 @@ static const struct { const char *name; SwlCmdFunc func; } action_funcs[] = {
 	{ "moveresize",       swl_cmd_moveresize },
 	{ "quit",             swl_cmd_quit },
 	{ "chvt",             swl_cmd_chvt },
+	{ "scroller_cycle_width", swl_cmd_scroller_cycle_width },
 };
 
 static const struct { const char *name; void (*func)(SwlServer *, Monitor *); } arrange_funcs[] = {
 	{ "tile",    swl_tile },
 	{ "monocle", swl_monocle },
+	{ "scroller", swl_scroller },
 };
 
 static const struct { const char *name; uint32_t mod; } mod_names[] = {
@@ -342,7 +353,8 @@ parse_arg(const char *action, toml_table_t *tab, const Layout *layouts,
 				fprintf(stderr, "swl_config_load: unknown command '%s'\n", d.u.s);
 			free(d.u.s);
 		}
-	} else if (strcmp(action, "focusstack") == 0 || strcmp(action, "incnmaster") == 0) {
+	} else if (strcmp(action, "focusstack") == 0 || strcmp(action, "incnmaster") == 0
+	           || strcmp(action, "scroller_cycle_width") == 0) {
 		toml_datum_t d = toml_int_in(tab, "arg");
 		if (d.ok)
 			arg.i = (int)d.u.i;
@@ -548,6 +560,47 @@ parse_trackpad(toml_table_t *tab, SwlConfig *config)
 		else if (strcmp(d.u.s, "lmr") == 0)
 			config->button_map = LIBINPUT_CONFIG_TAP_MAP_LMR;
 		free(d.u.s);
+	}
+}
+
+static void
+parse_scroller(toml_table_t *tab, SwlConfig *config)
+{
+	toml_datum_t d;
+
+	d = toml_double_in(tab, "default_column_width");
+	if (d.ok) config->scroller_default_width = (float)d.u.d;
+
+	d = toml_bool_in(tab, "always_center_single_column");
+	if (d.ok) config->scroller_center_single = d.u.b;
+
+	d = toml_string_in(tab, "center_focused_column");
+	if (d.ok) {
+		if (strcmp(d.u.s, "always") == 0)
+			config->scroller_center = ScrollCenterAlways;
+		else if (strcmp(d.u.s, "on-overflow") == 0)
+			config->scroller_center = ScrollCenterOverflow;
+		else
+			config->scroller_center = ScrollCenterNever;
+		free(d.u.s);
+	}
+
+	toml_array_t *arr = toml_array_in(tab, "preset_column_widths");
+	if (arr) {
+		int n = toml_array_nelem(arr);
+		if (n > 0) {
+			float *widths = calloc((size_t)n, sizeof(float));
+			if (widths) {
+				int count = 0;
+				for (int i = 0; i < n; i++) {
+					toml_datum_t v = toml_double_at(arr, i);
+					if (v.ok)
+						widths[count++] = (float)v.u.d;
+				}
+				config->scroller_preset_widths = widths;
+				config->scroller_preset_count = (size_t)count;
+			}
+		}
 	}
 }
 
@@ -997,6 +1050,11 @@ swl_config_load(SwlConfig *config, const char *path)
 	toml_table_t *trackpad = toml_table_in(root, "trackpad");
 	if (trackpad)
 		parse_trackpad(trackpad, config);
+
+	/* [scroller] */
+	toml_table_t *scroller = toml_table_in(root, "scroller");
+	if (scroller)
+		parse_scroller(scroller, config);
 
 	/* [commands] -- must be parsed before keybinds */
 	toml_table_t *commands = toml_table_in(root, "commands");

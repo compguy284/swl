@@ -63,6 +63,13 @@ typedef struct SwlConfig {
 	/* Mouse bindings */
 	const Button *buttons;
 	size_t buttons_count;
+
+	/* Scroller layout */
+	float scroller_default_width;
+	float *scroller_preset_widths;
+	size_t scroller_preset_count;
+	enum SwlScrollerCenter scroller_center;
+	bool scroller_center_single;
 } SwlConfig;
 
 void swl_config_defaults(SwlConfig *config);

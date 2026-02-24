@@ -22,6 +22,7 @@
 enum SwlCursorMode : unsigned int { CurNormal, CurPressed, CurMove, CurResize }; /* cursor */
 enum SwlClientType : unsigned int { XDGShell, LayerShell, X11 }; /* client types */
 enum SwlLayer : unsigned int { LyrBg, LyrBottom, LyrTile, LyrFloat, LyrTop, LyrFS, LyrOverlay, LyrBlock, NUM_LAYERS }; /* scene layers */
+enum SwlScrollerCenter : unsigned int { ScrollCenterNever, ScrollCenterAlways, ScrollCenterOverflow };
 
 /* forward declarations */
 typedef struct SwlServer SwlServer;
@@ -82,6 +83,8 @@ typedef struct {
 	uint32_t tags;
 	bool isfloating, isurgent, isfullscreen;
 	uint32_t resize; /* configure serial of a pending resize */
+	float scroller_cw;         /* column width: fraction (0<x<=1) or pixels (>1), 0 = use default */
+	int scroller_preset_idx;   /* index into preset_column_widths for cycling */
 } Client;
 
 typedef struct {
@@ -152,6 +155,7 @@ struct Monitor {
 	float mfact;
 	bool gamma_lut_changed;
 	int nmaster;
+	int scroll_x;              /* horizontal viewport offset for scroller layout */
 	char ltsymbol[16];
 	bool asleep;
 };

@@ -115,6 +115,7 @@ src = files(
   'src/input.c',
   'src/layer.c',
   'src/layout.c',
+  'src/scroller.c',
   'src/output.c',
   'src/session.c',
   'src/util.c',

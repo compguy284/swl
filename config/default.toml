@@ -56,12 +56,22 @@ symbol = "><>"
 symbol = "[M]"
 arrange = "monocle"
 
+[[layout]]
+symbol = "|=|"
+arrange = "scroller"
+
 [[monitor]]
 mfact = 0.55
 nmaster = 1
 scale = 1.0
 layout = "[]="
 transform = "normal"
+
+[scroller]
+default_column_width = 0.5
+preset_column_widths = [0.5, 0.67, 1.0]
+center_focused_column = "never"
+always_center_single_column = false
 
 # Window rules (examples, commented out):
 # [[rule]]
@@ -156,6 +166,24 @@ mods = ["mod"]
 key = "m"
 action = "setlayout"
 arg = "[M]"
+
+[[bind.key]]
+mods = ["mod"]
+key = "s"
+action = "setlayout"
+arg = "|=|"
+
+[[bind.key]]
+mods = ["mod"]
+key = "bracketright"
+action = "scroller_cycle_width"
+arg = "1"
+
+[[bind.key]]
+mods = ["mod"]
+key = "bracketleft"
+action = "scroller_cycle_width"
+arg = "-1"
 
 [[bind.key]]
 mods = ["mod"]

@@ -22,6 +22,7 @@
 #include "layout.h"
 #include "output.h"
 #include "macros.h"
+#include "scroller.h"
 #include "util.h"
 
 /* File-scope static for signal handler */
@@ -127,6 +128,8 @@ swl_cmd_focusstack(SwlServer *server, const Arg *arg)
 		}
 	}
 	swl_focusclient(server, c, 1);
+	if (server->selmon && server->selmon->lt[server->selmon->sellt]->arrange == swl_scroller)
+		swl_arrange(server, server->selmon);
 }
 
 void
@@ -619,7 +622,16 @@ swl_handle_map(struct wl_listener *listener, void *data)
 	c->geom.width += 2 * c->bw;
 	c->geom.height += 2 * c->bw;
 
-	wl_list_insert(&server->clients, &c->link);
+	{
+		Monitor *cm = c->mon ? c->mon : server->selmon;
+		Client *focused = swl_focustop(server, cm);
+		if (focused && !c->isfloating
+				&& cm && cm->lt[cm->sellt]->arrange == swl_scroller) {
+			wl_list_insert(&focused->link, &c->link);
+		} else {
+			wl_list_insert(&server->clients, &c->link);
+		}
+	}
 	wl_list_insert(&server->fstack, &c->flink);
 
 	if ((p = swl_client_get_parent(c))) {

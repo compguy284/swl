@@ -9,6 +9,7 @@
 #include "cursor.h"
 #include "idle.h"
 #include "macros.h"
+#include "scroller.h"
 
 void
 swl_applybounds(Client *c, struct wlr_box *bbox)
@@ -73,7 +74,14 @@ swl_resize(SwlServer *server, Client *c, struct wlr_box geo, int interact)
 	bbox = interact ? &server->sgeom : &c->mon->w;
 	swl_client_set_bounds(c, geo.width, geo.height);
 	c->geom = geo;
-	swl_applybounds(c, bbox);
+	if (!c->isfloating && !c->isfullscreen
+			&& c->mon->lt[c->mon->sellt]->arrange == swl_scroller) {
+		/* Scroller clients may be positioned off-screen; only enforce minimum size */
+		c->geom.width = MAX(1 + 2 * (int)c->bw, c->geom.width);
+		c->geom.height = MAX(1 + 2 * (int)c->bw, c->geom.height);
+	} else {
+		swl_applybounds(c, bbox);
+	}
 
 	/* Position the client scene node and its surface within the border */
 	wlr_scene_node_set_position(&c->scene->node, c->geom.x, c->geom.y);
