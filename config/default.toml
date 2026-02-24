@@ -171,6 +171,30 @@ action = "consume_or_expel"
 arg = "right"
 
 [[bind.key]]
+mods = ["mod"]
+key = "Left"
+action = "focusdir"
+arg = "left"
+
+[[bind.key]]
+mods = ["mod"]
+key = "Right"
+action = "focusdir"
+arg = "right"
+
+[[bind.key]]
+mods = ["mod"]
+key = "Up"
+action = "focusdir"
+arg = "up"
+
+[[bind.key]]
+mods = ["mod"]
+key = "Down"
+action = "focusdir"
+arg = "down"
+
+[[bind.key]]
 mods = ["mod", "shift"]
 key = "q"
 action = "quit"

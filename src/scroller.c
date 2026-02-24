@@ -132,6 +132,108 @@ column_member_count(SwlServer *server, Client *head, Monitor *m)
 	return count;
 }
 
+/* Return 0-based index of client within its column */
+static int
+member_index(SwlServer *server, Client *head, Client *c, Monitor *m)
+{
+	if (c == head)
+		return 0;
+	int idx = 0;
+	Client *iter;
+	wl_list_for_each(iter, &head->link, link) {
+		if (&iter->link == &server->clients)
+			break;
+		if (!IS_TILED_ON(iter, m))
+			continue;
+		if (!iter->scroller_continuation)
+			break;
+		idx++;
+		if (iter == c)
+			return idx;
+	}
+	return idx;
+}
+
+/* Return the nth member (0-based) of a column, clamped to last */
+static Client *
+nth_column_member(SwlServer *server, Client *head, Monitor *m, int n)
+{
+	if (n == 0)
+		return head;
+	int idx = 0;
+	Client *last = head;
+	Client *iter;
+	wl_list_for_each(iter, &head->link, link) {
+		if (&iter->link == &server->clients)
+			break;
+		if (!IS_TILED_ON(iter, m))
+			continue;
+		if (!iter->scroller_continuation)
+			break;
+		idx++;
+		last = iter;
+		if (idx == n)
+			return iter;
+	}
+	return last; /* clamp to last member */
+}
+
+/* ===== focusdir command ===== */
+
+void
+swl_cmd_focusdir(SwlServer *server, const Arg *arg)
+{
+	Client *sel = swl_focustop(server, server->selmon);
+	if (!sel || sel->isfloating || sel->isfullscreen)
+		return;
+
+	Monitor *m = server->selmon;
+	Client *head = find_column_head(server, sel, m);
+	Client *target = nullptr;
+	int dir = arg->i; /* 0=left, 1=right, 2=up, 3=down */
+
+	if (dir <= 1) {
+		/* Left/Right: adjacent column, same vertical index */
+		int hdir = (dir == 0) ? -1 : 1;
+		Client *adj = find_adjacent_column_head(server, head, m, hdir);
+		if (!adj)
+			return;
+		int idx = member_index(server, head, sel, m);
+		target = nth_column_member(server, adj, m, idx);
+	} else if (dir == 2) {
+		/* Up: previous member in column */
+		if (sel == head)
+			return;
+		Client *iter;
+		wl_list_for_each_reverse(iter, &sel->link, link) {
+			if (&iter->link == &server->clients)
+				break;
+			if (IS_TILED_ON(iter, m)) {
+				target = iter;
+				break;
+			}
+		}
+	} else {
+		/* Down: next member in column */
+		Client *iter;
+		wl_list_for_each(iter, &sel->link, link) {
+			if (&iter->link == &server->clients)
+				break;
+			if (!IS_TILED_ON(iter, m))
+				continue;
+			if (!iter->scroller_continuation)
+				break;
+			target = iter;
+			break;
+		}
+	}
+
+	if (target) {
+		swl_focusclient(server, target, 1);
+		swl_arrange(server, server->selmon);
+	}
+}
+
 /* ===== consume_or_expel command ===== */
 
 void
