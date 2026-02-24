@@ -85,6 +85,7 @@ typedef struct {
 	uint32_t resize; /* configure serial of a pending resize */
 	float scroller_cw;         /* column width: fraction (0<x<=1) or pixels (>1), 0 = use default */
 	int scroller_preset_idx;   /* index into preset_column_widths for cycling */
+	bool scroller_continuation; /* true = stacked below the preceding column head */
 } Client;
 
 typedef struct {

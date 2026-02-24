@@ -274,6 +274,7 @@ swl_setmon(SwlServer *server, Client *c, Monitor *m)
 	if (oldmon == m)
 		return;
 	c->mon = m;
+	c->scroller_continuation = false;
 	c->prev = c->geom;
 
 	if (oldmon)
@@ -291,6 +292,8 @@ swl_setfloating(SwlServer *server, Client *c, int floating)
 {
 	Client *p = swl_client_get_parent(c);
 	c->isfloating = floating;
+	if (!floating)
+		c->scroller_continuation = false;
 	if (!c->mon || !swl_client_surface(c)->mapped)
 		return;
 	wlr_scene_node_reparent(&c->scene->node,
@@ -552,10 +555,24 @@ swl_handle_map(struct wl_listener *listener, void *data)
 	{
 		Monitor *cm = c->mon ? c->mon : server->selmon;
 		Client *focused = swl_focustop(server, cm);
-		if (focused && !c->isfloating)
-			wl_list_insert(&focused->link, &c->link);
-		else
+		if (focused && !c->isfloating) {
+			/* Insert after the last member of the focused client's
+			 * column so we don't split a stacked column */
+			Client *last = focused;
+			Client *iter;
+			wl_list_for_each(iter, &focused->link, link) {
+				if (&iter->link == &server->clients)
+					break;
+				if (!VISIBLEON(iter, cm) || iter->isfloating || iter->isfullscreen)
+					continue;
+				if (!iter->scroller_continuation)
+					break;
+				last = iter;
+			}
+			wl_list_insert(&last->link, &c->link);
+		} else {
 			wl_list_insert(&server->clients, &c->link);
+		}
 	}
 	wl_list_insert(&server->fstack, &c->flink);
 
@@ -603,6 +620,22 @@ swl_handle_unmap(struct wl_listener *listener, void *data)
 			swl_focusclient(server, swl_focustop(server, server->selmon), 1);
 		}
 	} else {
+		/* If c is a column head, promote the next continuation */
+		if (!c->scroller_continuation) {
+			Client *next;
+			wl_list_for_each(next, &c->link, link) {
+				if (&next->link == &server->clients)
+					break;
+				if (next->mon != c->mon || next->isfloating || next->isfullscreen)
+					continue;
+				if (next->scroller_continuation) {
+					next->scroller_continuation = false;
+					next->scroller_cw = c->scroller_cw;
+					next->scroller_preset_idx = c->scroller_preset_idx;
+				}
+				break;
+			}
+		}
 		wl_list_remove(&c->link);
 		swl_setmon(server, c, nullptr);
 		wl_list_remove(&c->flink);

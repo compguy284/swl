@@ -157,6 +157,18 @@ action = "tagmon"
 arg = "right"
 
 [[bind.key]]
+mods = ["mod"]
+key = "i"
+action = "consume_or_expel"
+arg = "left"
+
+[[bind.key]]
+mods = ["mod"]
+key = "o"
+action = "consume_or_expel"
+arg = "right"
+
+[[bind.key]]
 mods = ["mod", "shift"]
 key = "q"
 action = "quit"

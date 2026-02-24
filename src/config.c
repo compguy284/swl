@@ -197,6 +197,7 @@ static const struct { const char *name; SwlCmdFunc func; } action_funcs[] = {
 	{ "chvt",             swl_cmd_chvt },
 	{ "scroller_cycle_width", swl_cmd_scroller_cycle_width },
 	{ "scroller_set_width", swl_cmd_scroller_set_width },
+	{ "consume_or_expel", swl_cmd_consume_or_expel },
 };
 
 static const struct { const char *name; uint32_t mod; } mod_names[] = {
@@ -322,6 +323,15 @@ parse_arg(const char *action, toml_table_t *tab)
 		toml_datum_t d = toml_int_in(tab, "arg");
 		if (d.ok)
 			arg.ui = (uint32_t)d.u.i;
+	} else if (strcmp(action, "consume_or_expel") == 0) {
+		toml_datum_t d = toml_string_in(tab, "arg");
+		if (d.ok) {
+			if (strcmp(d.u.s, "left") == 0)
+				arg.i = -1;
+			else if (strcmp(d.u.s, "right") == 0)
+				arg.i = 1;
+			free(d.u.s);
+		}
 	}
 
 	return arg;

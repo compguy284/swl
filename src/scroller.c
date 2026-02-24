@@ -8,6 +8,8 @@
 #include "layout.h"
 #include "macros.h"
 
+#define IS_TILED_ON(c, m) (VISIBLEON(c, m) && !(c)->isfloating && !(c)->isfullscreen)
+
 /* Resolve a client's scroller_cw to pixel width */
 static int
 resolve_width(Client *c, Monitor *m)
@@ -37,53 +39,272 @@ box_intersect(struct wlr_box *out, const struct wlr_box *a, const struct wlr_box
 	return true;
 }
 
+/* ===== Column helper functions ===== */
+
+/* Walk backward through visible tiled clients to find the column head */
+static Client *
+find_column_head(SwlServer *server, Client *c, Monitor *m)
+{
+	if (!c->scroller_continuation)
+		return c;
+	Client *head = c;
+	Client *iter;
+	wl_list_for_each_reverse(iter, &c->link, link) {
+		if (&iter->link == &server->clients)
+			break;
+		if (!IS_TILED_ON(iter, m))
+			continue;
+		if (!iter->scroller_continuation)
+			return iter;
+		head = iter;
+	}
+	return head;
+}
+
+/* Walk forward from head through continuation clients, return the last member */
+static Client *
+find_last_column_member(SwlServer *server, Client *head, Monitor *m)
+{
+	Client *last = head;
+	Client *iter;
+	wl_list_for_each(iter, &head->link, link) {
+		if (&iter->link == &server->clients)
+			break;
+		if (!IS_TILED_ON(iter, m))
+			continue;
+		if (!iter->scroller_continuation)
+			break;
+		last = iter;
+	}
+	return last;
+}
+
+/* Find the head of the adjacent column (dir: -1 = left, +1 = right) */
+static Client *
+find_adjacent_column_head(SwlServer *server, Client *col_head, Monitor *m, int dir)
+{
+	if (dir > 0) {
+		/* Walk forward past current column members, then find next head */
+		Client *last = find_last_column_member(server, col_head, m);
+		Client *iter;
+		wl_list_for_each(iter, &last->link, link) {
+			if (&iter->link == &server->clients)
+				break;
+			if (!IS_TILED_ON(iter, m))
+				continue;
+			/* This must be the next column head (not a continuation
+			 * of ours since we started after last) */
+			return iter;
+		}
+	} else {
+		/* Walk backward from col_head to find the previous column's head */
+		Client *prev_member = nullptr;
+		Client *iter;
+		wl_list_for_each_reverse(iter, &col_head->link, link) {
+			if (&iter->link == &server->clients)
+				break;
+			if (!IS_TILED_ON(iter, m))
+				continue;
+			prev_member = iter;
+			break;
+		}
+		if (prev_member)
+			return find_column_head(server, prev_member, m);
+	}
+	return nullptr;
+}
+
+/* Count visible tiled members in the column starting from head */
+static int
+column_member_count(SwlServer *server, Client *head, Monitor *m)
+{
+	int count = 1;
+	Client *iter;
+	wl_list_for_each(iter, &head->link, link) {
+		if (&iter->link == &server->clients)
+			break;
+		if (!IS_TILED_ON(iter, m))
+			continue;
+		if (!iter->scroller_continuation)
+			break;
+		count++;
+	}
+	return count;
+}
+
+/* ===== consume_or_expel command ===== */
+
+void
+swl_cmd_consume_or_expel(SwlServer *server, const Arg *arg)
+{
+	if (!arg)
+		return;
+	int dir = arg->i; /* -1 = left, +1 = right */
+	Monitor *m = server->selmon;
+	Client *focused = swl_focustop(server, m);
+	if (!focused || focused->isfloating || focused->isfullscreen)
+		return;
+
+	Client *head = find_column_head(server, focused, m);
+	int count = column_member_count(server, head, m);
+
+	if (count == 1) {
+		/* Consume: take a client from the adjacent column */
+		Client *adj_head = find_adjacent_column_head(server, head, m, dir);
+		if (!adj_head)
+			return;
+
+		/* Pick which client to take:
+		 * consuming from left (-1) → take last member of left column
+		 * consuming from right (+1) → take head of right column */
+		Client *target;
+		if (dir < 0)
+			target = find_last_column_member(server, adj_head, m);
+		else
+			target = adj_head;
+
+		/* If target is a column head with continuations, promote next */
+		if (!target->scroller_continuation) {
+			Client *next;
+			wl_list_for_each(next, &target->link, link) {
+				if (&next->link == &server->clients)
+					break;
+				if (!IS_TILED_ON(next, m))
+					continue;
+				if (next->scroller_continuation) {
+					next->scroller_continuation = false;
+					next->scroller_cw = target->scroller_cw;
+					next->scroller_preset_idx = target->scroller_preset_idx;
+				}
+				break;
+			}
+		}
+
+		/* Move target into focused column: insert after last member */
+		Client *last = find_last_column_member(server, head, m);
+		wl_list_remove(&target->link);
+		wl_list_insert(&last->link, &target->link);
+		target->scroller_continuation = true;
+	} else {
+		/* Expel: remove focused from the stack as its own column */
+
+		/* Find a reference client that remains in the column */
+		Client *ref;
+		if (focused == head) {
+			/* Promote the next continuation to head */
+			ref = nullptr;
+			Client *iter;
+			wl_list_for_each(iter, &focused->link, link) {
+				if (&iter->link == &server->clients)
+					break;
+				if (!IS_TILED_ON(iter, m))
+					continue;
+				if (iter->scroller_continuation) {
+					iter->scroller_continuation = false;
+					iter->scroller_cw = focused->scroller_cw;
+					iter->scroller_preset_idx = focused->scroller_preset_idx;
+					ref = iter;
+				}
+				break;
+			}
+		} else {
+			ref = head;
+		}
+
+		/* Remove focused from the list */
+		wl_list_remove(&focused->link);
+
+		/* Insert based on direction relative to the remaining column */
+		if (ref) {
+			Client *remaining_head = find_column_head(server, ref, m);
+			Client *remaining_last = find_last_column_member(server, remaining_head, m);
+			if (dir > 0)
+				wl_list_insert(&remaining_last->link, &focused->link);
+			else
+				wl_list_insert(remaining_head->link.prev, &focused->link);
+		} else {
+			wl_list_insert(server->clients.prev, &focused->link);
+		}
+
+		focused->scroller_continuation = false;
+		focused->scroller_cw = 0;
+		focused->scroller_preset_idx = 0;
+	}
+
+	swl_arrange(server, m);
+}
+
+/* ===== Layout function ===== */
+
 void
 swl_scroller(SwlServer *server, Monitor *m)
 {
 	Client *c;
-	int n = 0;
+	int total = 0, ncols = 0;
 
-	/* Count visible tiled clients */
-	wl_list_for_each(c, &server->clients, link)
-		if (VISIBLEON(c, m) && !c->isfloating && !c->isfullscreen)
-			n++;
-	if (n == 0)
+	/* First pass: count visible tiled clients and columns */
+	wl_list_for_each(c, &server->clients, link) {
+		if (!IS_TILED_ON(c, m))
+			continue;
+		total++;
+		if (!c->scroller_continuation)
+			ncols++;
+	}
+	if (total == 0)
 		return;
 
-	/* Collect into temp array and compute virtual positions */
-	Client **cols = calloc((size_t)n, sizeof(Client *));
-	int *vx = calloc((size_t)n, sizeof(int));
-	int *vw = calloc((size_t)n, sizeof(int));
-	if (!cols || !vx || !vw) {
-		free(cols);
+	/* Allocate arrays */
+	Client **all = calloc((size_t)total, sizeof(Client *));
+	int *col_start = calloc((size_t)ncols, sizeof(int)); /* index into all[] */
+	int *col_count = calloc((size_t)ncols, sizeof(int));
+	int *vx = calloc((size_t)ncols, sizeof(int));
+	int *vw = calloc((size_t)ncols, sizeof(int));
+	if (!all || !col_start || !col_count || !vx || !vw) {
+		free(all);
+		free(col_start);
+		free(col_count);
 		free(vx);
 		free(vw);
 		return;
 	}
 
-	int i = 0;
+	/* Second pass: populate arrays */
+	int ci = 0, col_idx = -1;
 	int strip_x = m->w.x;
 	wl_list_for_each(c, &server->clients, link) {
-		if (!VISIBLEON(c, m) || c->isfloating || c->isfullscreen)
+		if (!IS_TILED_ON(c, m))
 			continue;
-		cols[i] = c;
-		vw[i] = resolve_width(c, m);
-		vx[i] = strip_x;
-		strip_x += vw[i];
-		i++;
+		all[ci] = c;
+		if (!c->scroller_continuation) {
+			col_idx++;
+			col_start[col_idx] = ci;
+			col_count[col_idx] = 1;
+			vw[col_idx] = resolve_width(c, m);
+			vx[col_idx] = strip_x;
+			strip_x += vw[col_idx];
+		} else {
+			col_count[col_idx]++;
+		}
+		ci++;
 	}
 
-	/* Find the focused client's index */
+	/* Find the focused client's column index */
 	Client *focused = swl_focustop(server, m);
 	int fi = -1;
-	for (i = 0; i < n; i++) {
-		if (cols[i] == focused) {
-			fi = i;
+	for (int i = 0; i < total; i++) {
+		if (all[i] == focused) {
+			/* Find which column this client belongs to */
+			for (int j = 0; j < ncols; j++) {
+				if (i >= col_start[j] && i < col_start[j] + col_count[j]) {
+					fi = j;
+					break;
+				}
+			}
 			break;
 		}
 	}
 	if (fi < 0)
-		goto position; /* focused client is floating; keep current scroll_x */
+		goto position; /* focused is floating; keep current scroll_x */
 
 	int focused_vx = vx[fi];
 	int focused_vw = vw[fi];
@@ -93,8 +314,7 @@ swl_scroller(SwlServer *server, Monitor *m)
 	/* Compute scroll_x based on center_focused_column mode */
 	enum SwlScrollerCenter mode = server->config.scroller_center;
 
-	/* Override: center single column if configured */
-	if (n == 1 && server->config.scroller_center_single)
+	if (ncols == 1 && server->config.scroller_center_single)
 		mode = ScrollCenterAlways;
 
 	switch (mode) {
@@ -102,12 +322,9 @@ swl_scroller(SwlServer *server, Monitor *m)
 		m->scroll_x = focused_center - viewport_center;
 		break;
 	case ScrollCenterOverflow:
-		/* If focused column fits in viewport, use "never" logic;
-		 * otherwise center it */
 		if (focused_vw > m->w.width) {
 			m->scroll_x = focused_center - viewport_center;
 		} else {
-			/* Ensure focused column is fully visible, minimal scroll */
 			if (focused_vx - m->scroll_x < m->w.x)
 				m->scroll_x = focused_vx - m->w.x;
 			else if (focused_vx + focused_vw - m->scroll_x > m->w.x + m->w.width)
@@ -116,7 +333,6 @@ swl_scroller(SwlServer *server, Monitor *m)
 		break;
 	case ScrollCenterNever:
 	default:
-		/* Ensure focused column is fully visible; scroll only to nearest edge */
 		if (focused_vx - m->scroll_x < m->w.x)
 			m->scroll_x = focused_vx - m->w.x;
 		else if (focused_vx + focused_vw - m->scroll_x > m->w.x + m->w.width)
@@ -126,60 +342,66 @@ swl_scroller(SwlServer *server, Monitor *m)
 
 position:
 	/* Position and clip each client */
-	for (i = 0; i < n; i++) {
-		c = cols[i];
+	for (int i = 0; i < ncols; i++) {
 		int screen_x = vx[i] - m->scroll_x;
-		struct wlr_box geo = {
-			.x = screen_x,
-			.y = m->w.y,
-			.width = vw[i],
-			.height = m->w.height,
-		};
+		int members = col_count[i];
 
-		swl_resize(server, c, geo, 0);
+		for (int j = 0; j < members; j++) {
+			c = all[col_start[i] + j];
+			int slot_h = m->w.height / members;
+			int y_pos = m->w.y + j * slot_h;
+			int h = (j == members - 1) ? (m->w.height - j * slot_h) : slot_h;
 
-		/* Compute visible intersection with monitor window area */
-		struct wlr_box visible;
-		if (!box_intersect(&visible, &c->geom, &m->w)) {
-			/* Fully off-screen: disable */
-			wlr_scene_node_set_enabled(&c->scene->node, false);
-		} else {
-			wlr_scene_node_set_enabled(&c->scene->node, true);
+			struct wlr_box geo = {
+				.x = screen_x,
+				.y = y_pos,
+				.width = vw[i],
+				.height = h,
+			};
 
-			if (visible.x == c->geom.x && visible.width == c->geom.width) {
-				/* Fully on-screen: normal clip */
-				struct wlr_box clip;
-				swl_client_get_clip(c, &clip);
-				wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &clip);
+			swl_resize(server, c, geo, 0);
+
+			/* Compute visible intersection with monitor window area */
+			struct wlr_box visible;
+			if (!box_intersect(&visible, &c->geom, &m->w)) {
+				wlr_scene_node_set_enabled(&c->scene->node, false);
 			} else {
-				/* Partially visible: clip surface */
-				int surface_origin_x = c->geom.x + (int)c->bw;
-				int surface_origin_y = c->geom.y + (int)c->bw;
-				struct wlr_box sclip = {
-					.x = visible.x - surface_origin_x,
-					.y = visible.y - surface_origin_y,
-					.width = visible.width,
-					.height = visible.height,
-				};
+				wlr_scene_node_set_enabled(&c->scene->node, true);
+
+				if (visible.x == c->geom.x && visible.width == c->geom.width) {
+					struct wlr_box clip;
+					swl_client_get_clip(c, &clip);
+					wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &clip);
+				} else {
+					int surface_origin_x = c->geom.x + (int)c->bw;
+					int surface_origin_y = c->geom.y + (int)c->bw;
+					struct wlr_box sclip = {
+						.x = visible.x - surface_origin_x,
+						.y = visible.y - surface_origin_y,
+						.width = visible.width,
+						.height = visible.height,
+					};
 
 #ifdef XWAYLAND
-				if (!swl_client_is_x11(c)) {
+					if (!swl_client_is_x11(c)) {
 #endif
-					sclip.x += c->surface.xdg->geometry.x;
-					sclip.y += c->surface.xdg->geometry.y;
+						sclip.x += c->surface.xdg->geometry.x;
+						sclip.y += c->surface.xdg->geometry.y;
 #ifdef XWAYLAND
+					}
+#endif
+					wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &sclip);
 				}
-#endif
-				wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &sclip);
-			}
 
-			/* Shadow follows visibility */
-			if (c->shadow)
-				wlr_scene_node_set_enabled(&c->shadow->node, true);
+				if (c->shadow)
+					wlr_scene_node_set_enabled(&c->shadow->node, true);
+			}
 		}
 	}
 
-	free(cols);
+	free(all);
+	free(col_start);
+	free(col_count);
 	free(vx);
 	free(vw);
 }
@@ -190,6 +412,8 @@ swl_cmd_scroller_cycle_width(SwlServer *server, const Arg *arg)
 	Client *c = swl_focustop(server, server->selmon);
 	if (!c || c->isfloating || c->isfullscreen)
 		return;
+
+	c = find_column_head(server, c, server->selmon);
 
 	SwlConfig *cfg = &server->config;
 	if (cfg->scroller_preset_count == 0)
@@ -215,6 +439,8 @@ swl_cmd_scroller_set_width(SwlServer *server, const Arg *arg)
 	Client *c = swl_focustop(server, server->selmon);
 	if (!c || !arg || c->isfloating || c->isfullscreen)
 		return;
+
+	c = find_column_head(server, c, server->selmon);
 
 	float w = arg->f;
 	if (w <= 0)
