@@ -250,3 +250,29 @@ swl_cmd_scroller_cycle_width(SwlServer *server, const Arg *arg)
 	c->scroller_cw = cfg->scroller_preset_widths[idx];
 	swl_arrange(server, server->selmon);
 }
+
+void
+swl_cmd_scroller_set_width(SwlServer *server, const Arg *arg)
+{
+	Client *c = swl_focustop(server, server->selmon);
+	if (!c || !arg || c->isfloating || c->isfullscreen)
+		return;
+
+	float w = arg->f;
+	if (w <= 0)
+		return;
+
+	c->scroller_cw = w;
+
+	/* Sync preset index if this width matches a preset, otherwise reset to 0 */
+	SwlConfig *cfg = &server->config;
+	c->scroller_preset_idx = 0;
+	for (size_t i = 0; i < cfg->scroller_preset_count; i++) {
+		if (cfg->scroller_preset_widths[i] == w) {
+			c->scroller_preset_idx = (int)i;
+			break;
+		}
+	}
+
+	swl_arrange(server, server->selmon);
+}

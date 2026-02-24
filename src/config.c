@@ -227,6 +227,7 @@ static const struct { const char *name; SwlCmdFunc func; } action_funcs[] = {
 	{ "quit",             swl_cmd_quit },
 	{ "chvt",             swl_cmd_chvt },
 	{ "scroller_cycle_width", swl_cmd_scroller_cycle_width },
+	{ "scroller_set_width", swl_cmd_scroller_set_width },
 };
 
 static const struct { const char *name; void (*func)(SwlServer *, Monitor *); } arrange_funcs[] = {
@@ -359,6 +360,10 @@ parse_arg(const char *action, toml_table_t *tab, const Layout *layouts,
 		if (d.ok)
 			arg.i = (int)d.u.i;
 	} else if (strcmp(action, "setmfact") == 0) {
+		toml_datum_t d = toml_double_in(tab, "arg");
+		if (d.ok)
+			arg.f = (float)d.u.d;
+	} else if (strcmp(action, "scroller_set_width") == 0) {
 		toml_datum_t d = toml_double_in(tab, "arg");
 		if (d.ok)
 			arg.f = (float)d.u.d;
