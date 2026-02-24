@@ -1,4 +1,4 @@
-dwl
+swl
 *.o
 *-protocol.c
 *-protocol.h

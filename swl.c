@@ -1597,7 +1597,7 @@ inputdevice(struct wl_listener *listener, void *data)
 	}
 
 	/* We need to let the wlr_seat know what our capabilities are, which is
-	 * communiciated to the client. In dwl we always have a cursor, even if
+	 * communiciated to the client. In swl we always have a cursor, even if
 	 * there are no pointer devices, so we always include that capability. */
 	/* TODO do we actually require a cursor? */
 	caps = WL_SEAT_CAPABILITY_POINTER;
@@ -1808,7 +1808,7 @@ maximizenotify(struct wl_listener *listener, void *data)
 {
 	/* This event is raised when a client would like to maximize itself,
 	 * typically because the user clicked on the maximize button on
-	 * client-side decorations. dwl doesn't support maximization, but
+	 * client-side decorations. swl doesn't support maximization, but
 	 * to conform to xdg-shell protocol we still must send a configure.
 	 * Since xdg-shell protocol v5 we should ignore request of unsupported
 	 * capabilities, just schedule a empty configure when the client uses <5
@@ -2271,7 +2271,7 @@ run(char *startup_cmd)
 	}
 
 	/* Mark stdout as non-blocking to avoid the startup script
-	 * causing dwl to freeze when a user neither closes stdin
+	 * causing swl to freeze when a user neither closes stdin
 	 * nor consumes standard input in his startup script */
 
 	if (fd_set_nonblock(STDOUT_FILENO) < 0)
@@ -2426,7 +2426,7 @@ setpsel(struct wl_listener *listener, void *data)
 {
 	/* This event is raised by the seat when a client wants to set the selection,
 	 * usually when the user copies something. wlroots allows compositors to
-	 * ignore such requests if they so choose, but in dwl we always honor them
+	 * ignore such requests if they so choose, but in swl we always honor them
 	 */
 	struct wlr_seat_request_set_primary_selection_event *event = data;
 	wlr_seat_set_primary_selection(seat, event->source, event->serial);
@@ -2437,7 +2437,7 @@ setsel(struct wl_listener *listener, void *data)
 {
 	/* This event is raised by the seat when a client wants to set the selection,
 	 * usually when the user copies something. wlroots allows compositors to
-	 * ignore such requests if they so choose, but in dwl we always honor them
+	 * ignore such requests if they so choose, but in swl we always honor them
 	 */
 	struct wlr_seat_request_set_selection_event *event = data;
 	wlr_seat_set_selection(seat, event->source, event->serial);
@@ -2675,7 +2675,7 @@ spawn(const Arg *arg)
 		dup2(STDERR_FILENO, STDOUT_FILENO);
 		setsid();
 		execvp(((char **)arg->v)[0], (char **)arg->v);
-		die("dwl: execvp %s failed:", ((char **)arg->v)[0]);
+		die("swl: execvp %s failed:", ((char **)arg->v)[0]);
 	}
 }
 
@@ -2878,7 +2878,7 @@ updatemons(struct wl_listener *listener, void *data)
 	wlr_scene_node_set_position(&root_bg->node, sgeom.x, sgeom.y);
 	wlr_scene_rect_set_size(root_bg, sgeom.width, sgeom.height);
 
-	/* Make sure the clients are hidden when dwl is locked */
+	/* Make sure the clients are hidden when swl is locked */
 	wlr_scene_node_set_position(&locked_bg->node, sgeom.x, sgeom.y);
 	wlr_scene_rect_set_size(locked_bg, sgeom.width, sgeom.height);
 
@@ -3176,7 +3176,7 @@ xwaylandready(struct wl_listener *listener, void *data)
 	/* assign the one and only seat */
 	wlr_xwayland_set_seat(xwayland, seat);
 
-	/* Set the default XWayland cursor to match the rest of dwl. */
+	/* Set the default XWayland cursor to match the rest of swl. */
 	if ((xcursor = wlr_xcursor_manager_get_xcursor(cursor_mgr, "default", 1)))
 		wlr_xwayland_set_cursor(xwayland,
 				xcursor->images[0]->buffer, xcursor->images[0]->width * 4,
@@ -3197,7 +3197,7 @@ main(int argc, char *argv[])
 		else if (c == 'd')
 			log_level = WLR_DEBUG;
 		else if (c == 'v')
-			die("dwl " VERSION);
+			die("swl " VERSION);
 		else
 			goto usage;
 	}

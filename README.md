@@ -1,13 +1,13 @@
-# dwl - dwm for Wayland
+# swl - dwm for Wayland
 
 Join us on our [Discord server]  
 Or Matrix: [#dwl-official:matrix.org]  
 Or on our IRC channel: [#dwl on Libera Chat]
 
-dwl is a compact, hackable compositor for [Wayland] based on [wlroots]. It is
+swl is a compact, hackable compositor for [Wayland] based on [wlroots]. It is
 intended to fill the same space in the Wayland world that [dwm] does in X11,
 primarily in terms of functionality, and secondarily in terms of
-philosophy. Like [dwm], dwl is:
+philosophy. Like [dwm], swl is:
 
 - Easy to understand, hack on, and extend with patches
 - One C source file (or a very small number) configurable via `config.h`
@@ -18,8 +18,8 @@ philosophy. Like [dwm], dwl is:
 ### Latest semi-stable [release]
 This is probably where you want to start. This builds against the [wlroots]
 versions currently shipping in major distributions. If your
-distribution's `wlroots` version is older, use an earlier dwl [release].
-The `wlroots` version against which a given `dwl` release builds is specified
+distribution's `wlroots` version is older, use an earlier swl [release].
+The `wlroots` version against which a given `swl` release builds is specified
 with each release on the [release] page
 
 ### Development branch [main]
@@ -32,8 +32,8 @@ The `wlroots-next` branch is built against the git version of [wlroots], which
 is unstable and changes frequently. PRs requiring functionality from the git
 version of `wlroots` should target this branch.
   
-### Building dwl
-dwl has the following dependencies:
+### Building swl
+swl has the following dependencies:
 - libinput
 - wayland
 - wlroots (compiled with the libinput backend)
@@ -41,7 +41,7 @@ dwl has the following dependencies:
 - wayland-protocols (compile-time only)
 - pkg-config (compile-time only)
 
-dwl has the following additional dependencies if XWayland support is enabled:
+swl has the following additional dependencies if XWayland support is enabled:
 - libxcb
 - libxcb-wm
 - wlroots (compiled with X11 support)
@@ -60,22 +60,22 @@ To enable XWayland, you should uncomment its flags in `config.mk`.
 All configuration is done by editing `config.h` and recompiling, in the same
 manner as [dwm]. There is no way to separately restart the window manager in
 Wayland without restarting the entire display server, so any changes will take
-effect the next time dwl is executed.
+effect the next time swl is executed.
 
 As in the [dwm] community, we encourage users to share patches they have
 created. Check out the [dwl-patches] repository!
 
-## Running dwl
+## Running swl
 
-dwl can be run on any of the backends supported by wlroots. This means you can
+swl can be run on any of the backends supported by wlroots. This means you can
 run it as a separate window inside either an X11 or Wayland session, as well as
 directly from a VT console. Depending on your distro's setup, you may need to
-add your user to the `video` and `input` groups before you can run dwl on a
+add your user to the `video` and `input` groups before you can run swl on a
 VT. If you are using `elogind` or `systemd-logind` you need to install polkit;
 otherwise you need to add yourself in the `seat` group and enable/start the
 seatd daemon.
 
-When dwl is run with no arguments, it will launch the server and begin handling
+When swl is run with no arguments, it will launch the server and begin handling
 any shortcuts configured in `config.h`. There is no status bar or other
 decoration initially; these are instead clients that can be run within the
 Wayland session. Do note that the default background color is grey. This can be
@@ -85,48 +85,48 @@ If you would like to run a script or command automatically at startup, you can
 specify the command using the `-s` option. This command will be executed as a
 shell command using `/bin/sh -c`.  It serves a similar function to `.xinitrc`,
 but differs in that the display server will not shut down when this process
-terminates. Instead, dwl will send this process a SIGTERM at shutdown and wait
+terminates. Instead, swl will send this process a SIGTERM at shutdown and wait
 for it to terminate (if it hasn't already). This makes it ideal for execing into
 a user service manager like [s6], [anopa], [runit], [dinit], or [`systemd
 --user`].
 
-Note: The `-s` command is run as a *child process* of dwl, which means that it
-does not have the ability to affect the environment of dwl or of any processes
+Note: The `-s` command is run as a *child process* of swl, which means that it
+does not have the ability to affect the environment of swl or of any processes
 that it spawns. If you need to set environment variables that affect the entire
-dwl session, these must be set prior to running dwl. For example, Wayland
+swl session, these must be set prior to running swl. For example, Wayland
 requires a valid `XDG_RUNTIME_DIR`, which is usually set up by a session manager
 such as `elogind` or `systemd-logind`.  If your system doesn't do this
-automatically, you will need to configure it prior to launching `dwl`, e.g.:
+automatically, you will need to configure it prior to launching `swl`, e.g.:
 
     export XDG_RUNTIME_DIR=/tmp/xdg-runtime-$(id -u)
     mkdir -p $XDG_RUNTIME_DIR
-    dwl
+    swl
 
 ### Status information
 
 Information about selected layouts, current window title, app-id, and
 selected/occupied/urgent tags is written to the stdin of the `-s` command (see
-the `STATUS INFORMATION` section in `_dwl_(1)`).  This information can be used to
+the `STATUS INFORMATION` section in `_swl_(1)`).  This information can be used to
 populate an external status bar with a script that parses the
-information. Failing to read this information will cause dwl to block, so if you
+information. Failing to read this information will cause swl to block, so if you
 do want to run a startup command that does not consume the status information,
 you can close standard input with the `<&-` shell redirection, for example:
 
-    dwl -s 'foot --server <&-'
+    swl -s 'foot --server <&-'
 
 If your startup command is a shell script, you can achieve the same inside the
 script with the line
 
     exec <&-
 
-To get a list of status bars that work with dwl consult our [wiki].
+To get a list of status bars that work with swl consult our [wiki].
 
 ### (Known) Java nonreparenting WM issue
 Certain IDEs don't display correctly unless an environmental variable for Java AWT
 indicates that the WM is nonreparenting.
 
 For some Java AWT-based IDEs, such as Xilinx Vivado and Microchip MPLAB X, the
-following environment variable needs to be set before running the IDE or dwl:
+following environment variable needs to be set before running the IDE or swl:
 
     export _JAVA_AWT_WM_NONREPARENTING=1
 
@@ -136,7 +136,7 @@ You can find a [list of useful resources on our wiki].
 
 ## Background
 
-dwl is not meant to provide every feature under the sun. Instead, like [dwm], it
+swl is not meant to provide every feature under the sun. Instead, like [dwm], it
 sticks to features which are necessary, simple, and straightforward to implement
 given the base on which it is built. Implemented default features are:
 
@@ -157,7 +157,7 @@ given the base on which it is built. Implemented default features are:
 - Layer shell popups (used by Waybar)
 - Damage tracking provided by scenegraph API
 
-Given the Wayland architecture, dwl has to implement features from [dwm] **and**
+Given the Wayland architecture, swl has to implement features from [dwm] **and**
 the xorg-server. Because of this, it is impossible to maintain the original
 project goal of 2000 SLOC and have a reasonably complete compositor with
 features comparable to [dwm]. However, this does not mean that the code will grow
@@ -179,7 +179,7 @@ Feature *non-goals* for the main codebase include:
 
 ## Acknowledgements
 
-dwl began by extending the TinyWL example provided (CC0) by the sway/wlroots
+swl began by extending the TinyWL example provided (CC0) by the sway/wlroots
 developers. This was made possible in many cases by looking at how sway
 accomplished something, then trying to do the same in as suckless a way as
 possible.
