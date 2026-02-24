@@ -413,6 +413,11 @@ swl_setfloating(SwlServer *server, Client *c, int floating)
 	wlr_scene_node_reparent(&c->scene->node,
 			server->layers[c->isfullscreen || (p && p->isfullscreen)
 			? LyrFS : c->isfloating ? LyrFloat : LyrTile]);
+	if (floating && !c->isfullscreen) {
+		c->geom.x = c->mon->w.x + (c->mon->w.width - c->geom.width) / 2;
+		c->geom.y = c->mon->w.y + (c->mon->w.height - c->geom.height) / 2;
+		swl_resize(server, c, c->geom, 0);
+	}
 	swl_arrange(server, c->mon);
 	swl_printstatus(server);
 }
