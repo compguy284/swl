@@ -4,12 +4,17 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    scenefx = {
+      url = "github:wlrfx/scenefx";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, scenefx }:
     flake-utils.lib.eachSystem [ "x86_64-linux" "aarch64-linux" ] (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        scenefx-git = scenefx.packages.${system}.default;
 
         swl = pkgs.callPackage (
           { lib
@@ -63,6 +68,7 @@
               libxcb
               libxkbcommon
               pixman
+              scenefx-git
               wayland
               wayland-protocols
               wlroots_0_19

@@ -10,7 +10,7 @@
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_layer_shell_v1.h>
 #include <wlr/types/wlr_output.h>
-#include <wlr/types/wlr_scene.h>
+#include <scenefx/types/wlr_scene.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
@@ -432,6 +432,12 @@ swl_setfullscreen(SwlServer *server, Client *c, int fullscreen)
 	swl_client_set_fullscreen(c, fullscreen);
 	wlr_scene_node_reparent(&c->scene->node,
 			server->layers[c->isfullscreen ? LyrFS : c->isfloating ? LyrFloat : LyrTile]);
+
+	if (c->border)
+		wlr_scene_node_set_enabled(&c->border->node, !fullscreen);
+	if (c->shadow)
+		wlr_scene_node_set_enabled(&c->shadow->node, !fullscreen);
+
 	if (fullscreen) {
 		c->prev = c->geom;
 		swl_resize(server, c, c->mon->m, 0);
@@ -533,6 +539,20 @@ createpopup(struct wl_listener *listener, void *data)
 }
 
 static void
+apply_buffer_effects(struct wlr_scene_buffer *buf, int sx, int sy, void *data)
+{
+	Client *c = data;
+	SwlServer *server = c->server;
+	int inner_radius = server->config.corner_radius > (int)c->bw
+		? server->config.corner_radius - (int)c->bw : 0;
+
+	if (inner_radius > 0)
+		wlr_scene_buffer_set_corner_radius(buf, inner_radius);
+	if (server->config.opacity < 1.0f)
+		wlr_scene_buffer_set_opacity(buf, server->config.opacity);
+}
+
+static void
 commitnotify(struct wl_listener *listener, void *data)
 {
 	Client *c = wl_container_of(listener, c, commit);
@@ -554,6 +574,10 @@ commitnotify(struct wl_listener *listener, void *data)
 	swl_resize(server, c, c->geom, (c->isfloating && !c->isfullscreen));
 	if (c->resize && c->resize <= c->surface.xdg->current.configure_serial)
 		c->resize = 0;
+
+	if (server->config.corner_radius > 0 || server->config.opacity < 1.0f)
+		wlr_scene_node_for_each_buffer(&c->scene_surface->node,
+				apply_buffer_effects, c);
 }
 
 static void
@@ -596,7 +620,6 @@ swl_handle_map(struct wl_listener *listener, void *data)
 	Client *w, *c = wl_container_of(listener, c, map);
 	SwlServer *server = c->server;
 	Monitor *m;
-	int i;
 
 	c->scene = swl_client_surface(c)->data = wlr_scene_tree_create(server->layers[LyrTile]);
 	wlr_scene_node_set_enabled(&c->scene->node, swl_client_is_unmanaged(c));
@@ -617,10 +640,28 @@ swl_handle_map(struct wl_listener *listener, void *data)
 		goto unset_fullscreen;
 	}
 
-	for (i = 0; i < 4; i++) {
-		c->border[i] = wlr_scene_rect_create(c->scene, 0, 0,
-				c->isurgent ? server->config.urgentcolor : server->config.bordercolor);
-		c->border[i]->node.data = c;
+	{
+		const float *bcolor = c->isurgent
+			? server->config.urgentcolor : server->config.bordercolor;
+		c->border = wlr_scene_rect_create(c->scene,
+				c->geom.width, c->geom.height, bcolor);
+		c->border->node.data = c;
+		wlr_scene_node_place_below(&c->border->node,
+				&c->scene_surface->node);
+
+		if (server->config.corner_radius > 0)
+			wlr_scene_rect_set_corner_radius(c->border,
+					server->config.corner_radius);
+
+		if (server->config.shadow_enabled) {
+			c->shadow = wlr_scene_shadow_create(c->scene,
+					c->geom.width, c->geom.height,
+					server->config.corner_radius,
+					server->config.shadow_sigma,
+					server->config.shadow_color);
+			wlr_scene_node_place_below(&c->shadow->node,
+					&c->border->node);
+		}
 	}
 
 	swl_client_set_tiled(c, WLR_EDGE_TOP | WLR_EDGE_BOTTOM | WLR_EDGE_LEFT | WLR_EDGE_RIGHT);

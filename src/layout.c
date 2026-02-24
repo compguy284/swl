@@ -1,7 +1,8 @@
 #include <math.h>
+#include <pixman.h>
 #include <stdio.h>
 #include <string.h>
-#include <wlr/types/wlr_scene.h>
+#include <scenefx/types/wlr_scene.h>
 
 #include "layout.h"
 #include "client.h"
@@ -87,16 +88,28 @@ swl_resize(SwlServer *server, Client *c, struct wlr_box geo, int interact)
 	wlr_scene_node_set_position(&c->scene->node, c->geom.x, c->geom.y);
 	wlr_scene_node_set_position(&c->scene_surface->node, c->bw, c->bw);
 
-	/* Resize borders: top, bottom, left, right */
-	wlr_scene_rect_set_size(c->border[0], c->geom.width, c->bw);
-	wlr_scene_rect_set_size(c->border[1], c->geom.width, c->bw);
-	wlr_scene_rect_set_size(c->border[2], c->bw, c->geom.height - 2 * c->bw);
-	wlr_scene_rect_set_size(c->border[3], c->bw, c->geom.height - 2 * c->bw);
+	/* Resize single border rect and compute hollow clip region */
+	if (c->border) {
+		wlr_scene_rect_set_size(c->border, c->geom.width, c->geom.height);
 
-	/* Position borders */
-	wlr_scene_node_set_position(&c->border[1]->node, 0, c->geom.height - c->bw);
-	wlr_scene_node_set_position(&c->border[2]->node, 0, c->bw);
-	wlr_scene_node_set_position(&c->border[3]->node, c->geom.width - c->bw, c->bw);
+		if (c->bw > 0) {
+			int cr = c->server->config.corner_radius;
+			int inner_cr = cr > (int)c->bw ? cr - (int)c->bw : 0;
+			struct clipped_region hollow = {
+				.area = {
+					.x = (int)c->bw,
+					.y = (int)c->bw,
+					.width = c->geom.width - 2 * (int)c->bw,
+					.height = c->geom.height - 2 * (int)c->bw,
+				},
+				.corners = corner_radii_all(inner_cr),
+			};
+			wlr_scene_rect_set_clipped_region(c->border, hollow);
+		}
+	}
+
+	if (c->shadow)
+		wlr_scene_shadow_set_size(c->shadow, c->geom.width, c->geom.height);
 
 	/* Apply the new size to the client surface */
 	c->resize = swl_client_set_size(c, c->geom.width - 2 * c->bw,

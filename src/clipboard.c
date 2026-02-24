@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <wlr/types/wlr_data_device.h>
 #include <wlr/types/wlr_primary_selection.h>
-#include <wlr/types/wlr_scene.h>
+#include <scenefx/types/wlr_scene.h>
 #include <wlr/types/wlr_seat.h>
 
 #include "clipboard.h"

@@ -8,7 +8,7 @@
 #include <sys/wait.h>
 #include <wayland-server-core.h>
 #include <wlr/types/wlr_fractional_scale_v1.h>
-#include <wlr/types/wlr_scene.h>
+#include <scenefx/types/wlr_scene.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_xdg_shell.h>
 #ifdef XWAYLAND
@@ -320,9 +320,8 @@ swl_client_send_close(Client *c)
 void
 swl_client_set_border_color(Client *c, const float color[static 4])
 {
-	int i;
-	for (i = 0; i < 4; i++)
-		wlr_scene_rect_set_color(c->border[i], color);
+	if (c->border)
+		wlr_scene_rect_set_color(c->border, color);
 }
 
 void

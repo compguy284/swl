@@ -49,12 +49,13 @@ add_project_arguments('-DVERSION="@0@"'.format(version), language: 'c')
 # Dependencies
 wayland_server = dependency('wayland-server')
 wayland_protos = dependency('wayland-protocols')
+scenefx = dependency('scenefx-0.4')
 wlroots = dependency('wlroots-0.19')
 xkbcommon = dependency('xkbcommon')
 libinput = dependency('libinput')
 math = cc.find_library('m')
 
-deps = [wayland_server, wlroots, xkbcommon, libinput, math]
+deps = [wayland_server, scenefx, wlroots, xkbcommon, libinput, math]
 
 # XWayland support
 xwayland = get_option('xwayland')

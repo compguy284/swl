@@ -9,6 +9,9 @@
 #include <wlr/backend/session.h>
 #include <wlr/render/allocator.h>
 #include <wlr/render/wlr_renderer.h>
+
+/* Forward-declare to avoid pulling in GLES2 headers from fx_renderer.h */
+struct wlr_renderer *fx_renderer_create(struct wlr_backend *backend);
 #include <wlr/types/wlr_alpha_modifier_v1.h>
 #include <wlr/types/wlr_compositor.h>
 #include <wlr/types/wlr_cursor.h>
@@ -32,7 +35,7 @@
 #include <wlr/types/wlr_presentation_time.h>
 #include <wlr/types/wlr_primary_selection_v1.h>
 #include <wlr/types/wlr_relative_pointer_v1.h>
-#include <wlr/types/wlr_scene.h>
+#include <scenefx/types/wlr_scene.h>
 #include <wlr/types/wlr_screencopy_v1.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_server_decoration.h>
@@ -95,6 +98,14 @@ swl_server_setup(SwlServer *server)
 
 	/* Initialize the scene graph used to lay out windows */
 	server->scene = wlr_scene_create();
+	if (server->config.blur_enabled)
+		wlr_scene_set_blur_data(server->scene,
+				server->config.blur_num_passes,
+				server->config.blur_radius,
+				server->config.blur_noise,
+				server->config.blur_brightness,
+				server->config.blur_contrast,
+				server->config.blur_saturation);
 	server->root_bg = wlr_scene_rect_create(&server->scene->tree, 0, 0,
 			server->config.rootcolor);
 	for (i = 0; i < NUM_LAYERS; i++)
@@ -103,12 +114,11 @@ swl_server_setup(SwlServer *server)
 	wlr_scene_node_place_below(&server->drag_icon->node,
 			&server->layers[LyrBlock]->node);
 
-	/* Autocreates a renderer, either Pixman, GLES2 or Vulkan for us. The user
-	 * can also specify a renderer using the WLR_RENDERER env var.
+	/* Create the SceneFX renderer (GLES2-based with effects support).
 	 * The renderer is responsible for defining the various pixel formats it
 	 * supports for shared memory, this configures that for clients. */
-	if (!(server->drw = wlr_renderer_autocreate(server->backend)))
-		die("couldn't create renderer");
+	if (!(server->drw = fx_renderer_create(server->backend)))
+		die("couldn't create fx renderer");
 	wl_signal_add(&server->drw->events.lost, &server->gpu_reset);
 	server->gpu_reset.notify = swl_handle_gpu_reset;
 

@@ -40,6 +40,24 @@ accel_speed = 0.0
 button_map = "lrm"
 send_events = "enabled"
 
+[effects]
+corner_radius = 0
+opacity = 1.0
+
+[effects.shadow]
+enabled = false
+sigma = 20.0
+color = "0x00000099"
+
+[effects.blur]
+enabled = false
+num_passes = 2
+radius = 5
+noise = 0.02
+brightness = 1.0
+contrast = 1.0
+saturation = 1.0
+
 [commands]
 mod_key = "alt"
 terminal = ["foot"]

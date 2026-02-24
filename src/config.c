@@ -178,6 +178,25 @@ swl_config_defaults(SwlConfig *config)
 	config->scroller_preset_count = LENGTH(default_presets);
 	config->scroller_center = ScrollCenterNever;
 	config->scroller_center_single = false;
+
+	/* Effects (scenefx) */
+	config->corner_radius = 0;
+	config->opacity = 1.0f;
+
+	config->shadow_enabled = false;
+	config->shadow_sigma = 20.0f;
+	config->shadow_color[0] = 0.0f;
+	config->shadow_color[1] = 0.0f;
+	config->shadow_color[2] = 0.0f;
+	config->shadow_color[3] = 0.6f;
+
+	config->blur_enabled = false;
+	config->blur_num_passes = 2;
+	config->blur_radius = 5;
+	config->blur_noise = 0.02f;
+	config->blur_brightness = 1.0f;
+	config->blur_contrast = 1.0f;
+	config->blur_saturation = 1.0f;
 }
 
 /* =====================================================================
@@ -606,6 +625,56 @@ parse_scroller(toml_table_t *tab, SwlConfig *config)
 				config->scroller_preset_count = (size_t)count;
 			}
 		}
+	}
+}
+
+static void
+parse_effects(toml_table_t *tab, SwlConfig *config)
+{
+	toml_datum_t d;
+
+	d = toml_int_in(tab, "corner_radius");
+	if (d.ok) config->corner_radius = (int)d.u.i;
+
+	d = toml_double_in(tab, "opacity");
+	if (d.ok) config->opacity = (float)d.u.d;
+
+	/* [effects.shadow] */
+	toml_table_t *shadow = toml_table_in(tab, "shadow");
+	if (shadow) {
+		d = toml_bool_in(shadow, "enabled");
+		if (d.ok) config->shadow_enabled = d.u.b;
+
+		d = toml_double_in(shadow, "sigma");
+		if (d.ok) config->shadow_sigma = (float)d.u.d;
+
+		d = toml_string_in(shadow, "color");
+		if (d.ok) { parse_color(d.u.s, config->shadow_color); free(d.u.s); }
+	}
+
+	/* [effects.blur] */
+	toml_table_t *blur = toml_table_in(tab, "blur");
+	if (blur) {
+		d = toml_bool_in(blur, "enabled");
+		if (d.ok) config->blur_enabled = d.u.b;
+
+		d = toml_int_in(blur, "num_passes");
+		if (d.ok) config->blur_num_passes = (int)d.u.i;
+
+		d = toml_int_in(blur, "radius");
+		if (d.ok) config->blur_radius = (int)d.u.i;
+
+		d = toml_double_in(blur, "noise");
+		if (d.ok) config->blur_noise = (float)d.u.d;
+
+		d = toml_double_in(blur, "brightness");
+		if (d.ok) config->blur_brightness = (float)d.u.d;
+
+		d = toml_double_in(blur, "contrast");
+		if (d.ok) config->blur_contrast = (float)d.u.d;
+
+		d = toml_double_in(blur, "saturation");
+		if (d.ok) config->blur_saturation = (float)d.u.d;
 	}
 }
 
@@ -1060,6 +1129,11 @@ swl_config_load(SwlConfig *config, const char *path)
 	toml_table_t *scroller = toml_table_in(root, "scroller");
 	if (scroller)
 		parse_scroller(scroller, config);
+
+	/* [effects] */
+	toml_table_t *effects = toml_table_in(root, "effects");
+	if (effects)
+		parse_effects(effects, config);
 
 	/* [commands] -- must be parsed before keybinds */
 	toml_table_t *commands = toml_table_in(root, "commands");

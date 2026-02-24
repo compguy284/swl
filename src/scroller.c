@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
-#include <wlr/types/wlr_scene.h>
+#include <scenefx/types/wlr_scene.h>
 
 #include "scroller.h"
 #include "client.h"
@@ -143,80 +143,39 @@ position:
 		if (!box_intersect(&visible, &c->geom, &m->w)) {
 			/* Fully off-screen: disable */
 			wlr_scene_node_set_enabled(&c->scene->node, false);
-		} else if (visible.x == c->geom.x && visible.width == c->geom.width) {
-			/* Fully on-screen: normal clip */
-			wlr_scene_node_set_enabled(&c->scene->node, true);
-			struct wlr_box clip;
-			swl_client_get_clip(c, &clip);
-			wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &clip);
-
-			/* Reset borders to full size */
-			wlr_scene_rect_set_size(c->border[0], c->geom.width, c->bw);
-			wlr_scene_rect_set_size(c->border[1], c->geom.width, c->bw);
-			wlr_scene_rect_set_size(c->border[2], c->bw, c->geom.height - 2 * c->bw);
-			wlr_scene_rect_set_size(c->border[3], c->bw, c->geom.height - 2 * c->bw);
-			wlr_scene_node_set_position(&c->border[0]->node, 0, 0);
-			wlr_scene_node_set_position(&c->border[1]->node, 0, c->geom.height - c->bw);
-			wlr_scene_node_set_position(&c->border[2]->node, 0, c->bw);
-			wlr_scene_node_set_position(&c->border[3]->node, c->geom.width - c->bw, c->bw);
 		} else {
-			/* Partially visible: clip surface and adjust borders */
 			wlr_scene_node_set_enabled(&c->scene->node, true);
 
-			/* Surface clip in surface-local coordinates */
-			int surface_origin_x = c->geom.x + (int)c->bw;
-			int surface_origin_y = c->geom.y + (int)c->bw;
-			struct wlr_box sclip = {
-				.x = visible.x - surface_origin_x,
-				.y = visible.y - surface_origin_y,
-				.width = visible.width,
-				.height = visible.height,
-			};
-
-			/* Account for XDG geometry offset */
-#ifdef XWAYLAND
-			if (!swl_client_is_x11(c)) {
-#endif
-				sclip.x += c->surface.xdg->geometry.x;
-				sclip.y += c->surface.xdg->geometry.y;
-#ifdef XWAYLAND
-			}
-#endif
-
-			wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &sclip);
-
-			/* Adjust borders to visible portion.
-			 * visible is in layout coordinates, borders are scene-node-local
-			 * (relative to c->geom.x, c->geom.y) */
-			int vis_local_x = visible.x - c->geom.x;
-			int vis_local_w = visible.width;
-			int bw = (int)c->bw;
-
-			/* Top border */
-			wlr_scene_rect_set_size(c->border[0], vis_local_w, c->bw);
-			wlr_scene_node_set_position(&c->border[0]->node, vis_local_x, 0);
-
-			/* Bottom border */
-			wlr_scene_rect_set_size(c->border[1], vis_local_w, c->bw);
-			wlr_scene_node_set_position(&c->border[1]->node, vis_local_x, c->geom.height - c->bw);
-
-			/* Left border: only show if left edge is visible */
-			if (visible.x <= c->geom.x) {
-				wlr_scene_rect_set_size(c->border[2], c->bw, c->geom.height - 2 * c->bw);
-				wlr_scene_node_set_position(&c->border[2]->node, 0, bw);
-				wlr_scene_node_set_enabled(&c->border[2]->node, true);
+			if (visible.x == c->geom.x && visible.width == c->geom.width) {
+				/* Fully on-screen: normal clip */
+				struct wlr_box clip;
+				swl_client_get_clip(c, &clip);
+				wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &clip);
 			} else {
-				wlr_scene_node_set_enabled(&c->border[2]->node, false);
+				/* Partially visible: clip surface */
+				int surface_origin_x = c->geom.x + (int)c->bw;
+				int surface_origin_y = c->geom.y + (int)c->bw;
+				struct wlr_box sclip = {
+					.x = visible.x - surface_origin_x,
+					.y = visible.y - surface_origin_y,
+					.width = visible.width,
+					.height = visible.height,
+				};
+
+#ifdef XWAYLAND
+				if (!swl_client_is_x11(c)) {
+#endif
+					sclip.x += c->surface.xdg->geometry.x;
+					sclip.y += c->surface.xdg->geometry.y;
+#ifdef XWAYLAND
+				}
+#endif
+				wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &sclip);
 			}
 
-			/* Right border: only show if right edge is visible */
-			if (visible.x + visible.width >= c->geom.x + c->geom.width) {
-				wlr_scene_rect_set_size(c->border[3], c->bw, c->geom.height - 2 * c->bw);
-				wlr_scene_node_set_position(&c->border[3]->node, c->geom.width - c->bw, bw);
-				wlr_scene_node_set_enabled(&c->border[3]->node, true);
-			} else {
-				wlr_scene_node_set_enabled(&c->border[3]->node, false);
-			}
+			/* Shadow follows visibility */
+			if (c->shadow)
+				wlr_scene_node_set_enabled(&c->shadow->node, true);
 		}
 	}
 

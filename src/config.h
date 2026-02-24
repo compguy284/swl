@@ -70,6 +70,22 @@ typedef struct SwlConfig {
 	size_t scroller_preset_count;
 	enum SwlScrollerCenter scroller_center;
 	bool scroller_center_single;
+
+	/* Effects (scenefx) */
+	int corner_radius;
+	float opacity;
+
+	bool shadow_enabled;
+	float shadow_sigma;
+	float shadow_color[4];
+
+	bool blur_enabled;
+	int blur_num_passes;
+	int blur_radius;
+	float blur_noise;
+	float blur_brightness;
+	float blur_contrast;
+	float blur_saturation;
 } SwlConfig;
 
 void swl_config_defaults(SwlConfig *config);
