@@ -97,6 +97,7 @@ swl_config_defaults(SwlConfig *config)
 	};
 	config->repeat_rate = 25;
 	config->repeat_delay = 600;
+	config->numlock = false;
 
 	/* Trackpad */
 	config->tap_to_click = true;
@@ -386,6 +387,9 @@ parse_keyboard(toml_table_t *tab, SwlConfig *config)
 
 	d = toml_int_in(tab, "repeat_delay");
 	if (d.ok) config->repeat_delay = (int)d.u.i;
+
+	d = toml_bool_in(tab, "numlock");
+	if (d.ok) config->numlock = d.u.b;
 
 	d = toml_string_in(tab, "rules");
 	if (d.ok) { config->xkb_rules.rules = strdup(d.u.s); free(d.u.s); }

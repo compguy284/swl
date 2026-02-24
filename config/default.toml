@@ -17,6 +17,7 @@ fullscreen_bg = "0x000000ff"
 [keyboard]
 repeat_rate = 25
 repeat_delay = 600
+numlock = false
 # XKB rule names (uncomment to customize):
 # rules = ""
 # model = ""

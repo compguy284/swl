@@ -25,6 +25,7 @@ typedef struct SwlConfig {
 	struct xkb_rule_names xkb_rules;
 	int repeat_rate;
 	int repeat_delay;
+	bool numlock;
 
 	/* Trackpad/pointer (libinput) */
 	bool tap_to_click;

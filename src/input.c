@@ -4,6 +4,7 @@
 #include <wlr/backend/libinput.h>
 #include <wlr/types/wlr_cursor.h>
 #include <wlr/types/wlr_idle_notify_v1.h>
+#include <wlr/interfaces/wlr_keyboard.h>
 #include <wlr/types/wlr_keyboard.h>
 #include <wlr/types/wlr_keyboard_group.h>
 #include <wlr/types/wlr_pointer.h>
@@ -181,6 +182,14 @@ swl_create_keyboard_group(SwlServer *server)
 
 	wlr_keyboard_set_repeat_info(&group->wlr_group->keyboard,
 			server->config.repeat_rate, server->config.repeat_delay);
+
+	if (server->config.numlock) {
+		xkb_mod_index_t mod = xkb_keymap_mod_get_index(
+				group->wlr_group->keyboard.keymap, XKB_MOD_NAME_NUM);
+		if (mod != XKB_MOD_INVALID)
+			wlr_keyboard_notify_modifiers(&group->wlr_group->keyboard,
+					1 << mod, 0, 0, 0);
+	}
 
 	LISTEN(&group->wlr_group->keyboard.events.key, &group->key, keypress);
 	LISTEN(&group->wlr_group->keyboard.events.modifiers, &group->modifiers, keypressmod);
