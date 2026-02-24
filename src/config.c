@@ -8,7 +8,7 @@
 #include <wlr/types/wlr_keyboard.h>
 #include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
-#include <toml.h>
+#include "toml.h"
 
 #include "config.h"
 #include "commands.h"

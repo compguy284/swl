@@ -41,7 +41,6 @@
                 ./src
                 ./protocols
                 ./config
-                ./subprojects
                 ./swl.1
                 ./swl.desktop
               ];

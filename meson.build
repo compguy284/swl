@@ -54,11 +54,7 @@ xkbcommon = dependency('xkbcommon')
 libinput = dependency('libinput')
 math = cc.find_library('m')
 
-# TOML configuration library (vendored)
-tomlc99 = subproject('tomlc99')
-tomlc99_dep = tomlc99.get_variable('tomlc99_dep')
-
-deps = [wayland_server, wlroots, xkbcommon, libinput, math, tomlc99_dep]
+deps = [wayland_server, wlroots, xkbcommon, libinput, math]
 
 # XWayland support
 xwayland = get_option('xwayland')
@@ -122,6 +118,7 @@ src = files(
   'src/output.c',
   'src/session.c',
   'src/util.c',
+  'src/toml.c',
 )
 
 if xwayland.enabled()
