@@ -38,6 +38,7 @@ click_method = "button_areas"
 accel_profile = "adaptive"
 accel_speed = 0.0
 button_map = "lrm"
+send_events = "enabled"
 
 [commands]
 mod_key = "alt"

@@ -530,6 +530,17 @@ parse_trackpad(toml_table_t *tab, SwlConfig *config)
 	d = toml_double_in(tab, "accel_speed");
 	if (d.ok) config->accel_speed = d.u.d;
 
+	d = toml_string_in(tab, "send_events");
+	if (d.ok) {
+		if (strcmp(d.u.s, "enabled") == 0)
+			config->send_events_mode = LIBINPUT_CONFIG_SEND_EVENTS_ENABLED;
+		else if (strcmp(d.u.s, "disabled") == 0)
+			config->send_events_mode = LIBINPUT_CONFIG_SEND_EVENTS_DISABLED;
+		else if (strcmp(d.u.s, "disabled_on_external_mouse") == 0)
+			config->send_events_mode = LIBINPUT_CONFIG_SEND_EVENTS_DISABLED_ON_EXTERNAL_MOUSE;
+		free(d.u.s);
+	}
+
 	d = toml_string_in(tab, "button_map");
 	if (d.ok) {
 		if (strcmp(d.u.s, "lrm") == 0)
