@@ -9,13 +9,9 @@ void swl_cmd_chvt(SwlServer *server, const Arg *arg);
 void swl_cmd_quit(SwlServer *server, const Arg *arg);
 void swl_cmd_focusstack(SwlServer *server, const Arg *arg);
 void swl_cmd_focusmon(SwlServer *server, const Arg *arg);
-void swl_cmd_setmfact(SwlServer *server, const Arg *arg);
-void swl_cmd_incnmaster(SwlServer *server, const Arg *arg);
-void swl_cmd_setlayout(SwlServer *server, const Arg *arg);
 void swl_cmd_togglefloating(SwlServer *server, const Arg *arg);
 void swl_cmd_togglefullscreen(SwlServer *server, const Arg *arg);
 void swl_cmd_tagmon(SwlServer *server, const Arg *arg);
-void swl_cmd_zoom(SwlServer *server, const Arg *arg);
 void swl_cmd_moveresize(SwlServer *server, const Arg *arg);
 
 void swl_focusclient(SwlServer *server, Client *c, int lift);

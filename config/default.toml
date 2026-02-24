@@ -62,26 +62,8 @@ mod_key = "alt"
 terminal = ["foot"]
 menu = ["wmenu-run"]
 
-[[layout]]
-symbol = "[]="
-arrange = "tile"
-
-[[layout]]
-symbol = "><>"
-
-[[layout]]
-symbol = "[M]"
-arrange = "monocle"
-
-[[layout]]
-symbol = "|=|"
-arrange = "scroller"
-
 [[monitor]]
-mfact = 0.55
-nmaster = 1
 scale = 1.0
-layout = "[]="
 transform = "normal"
 
 [scroller]
@@ -124,62 +106,9 @@ action = "focusstack"
 arg = "-1"
 
 [[bind.key]]
-mods = ["mod"]
-key = "i"
-action = "incnmaster"
-arg = "1"
-
-[[bind.key]]
-mods = ["mod"]
-key = "d"
-action = "incnmaster"
-arg = "-1"
-
-[[bind.key]]
-mods = ["mod"]
-key = "h"
-action = "setmfact"
-arg = "-0.05"
-
-[[bind.key]]
-mods = ["mod"]
-key = "l"
-action = "setmfact"
-arg = "0.05"
-
-[[bind.key]]
-mods = ["mod"]
-key = "Return"
-action = "zoom"
-
-[[bind.key]]
 mods = ["mod", "shift"]
 key = "c"
 action = "killclient"
-
-[[bind.key]]
-mods = ["mod"]
-key = "t"
-action = "setlayout"
-arg = "[]="
-
-[[bind.key]]
-mods = ["mod"]
-key = "f"
-action = "setlayout"
-arg = "><>"
-
-[[bind.key]]
-mods = ["mod"]
-key = "m"
-action = "setlayout"
-arg = "[M]"
-
-[[bind.key]]
-mods = ["mod"]
-key = "s"
-action = "setlayout"
-arg = "|=|"
 
 [[bind.key]]
 mods = ["mod"]
@@ -192,11 +121,6 @@ mods = ["mod"]
 key = "bracketleft"
 action = "scroller_cycle_width"
 arg = "-1"
-
-[[bind.key]]
-mods = ["mod"]
-key = "space"
-action = "setlayout"
 
 [[bind.key]]
 mods = ["mod", "shift"]

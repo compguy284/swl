@@ -73,22 +73,8 @@ Spawn
 .Xr foot 1 .
 .It Mod-[jk]
 Move focus down/up the stack.
-.It Mod-[id]
-Increase/decrease number of windows in master area.
-.It Mod-[hl]
-Decrease/increase master area.
-.It Mod-Return
-Move window on top of stack or switch top of stack with second window.
 .It Mod-Shift-c
 Close window.
-.It Mod-t
-Switch to tabbed layout.
-.It Mod-f
-Switch to floating layout.
-.It Mod-m
-Switch to monocle layout.
-.It Mod-Space
-Switch to previous layout.
 .It Mod-Shift-Space
 Toggle floating state of window.
 .It Mod-e
@@ -141,8 +127,7 @@ is one of (in order)
 .Em appid ,
 .Em fullscreen ,
 .Em floating ,
-.Em selmon ,
-.Em layout .
+.Em selmon .
 .It Ar <data>
 changes depending on
 .Ar <component> .
@@ -169,8 +154,6 @@ window it prints nothing.
 Prints 1 if
 .Ar <monitor>
 is the selected monitor, otherwise prints 0.
-.It Em layout
-Prints the symbol of the current layout.
 .El
 .El
 .Ss Examples
@@ -181,7 +164,6 @@ HDMI\-A\-1 appid footclient
 HDMI\-A\-1 fullscreen 0
 HDMI\-A\-1 floating 0
 HDMI\-A\-1 selmon 1
-HDMI\-A\-1 layout [T]
 .Ed
 .Pp
 When there is no selected window:
@@ -191,7 +173,6 @@ HDMI\-A\-1 appid
 HDMI\-A\-1 fullscreen
 HDMI\-A\-1 floating
 HDMI\-A\-1 selmon 1
-HDMI\-A\-1 layout [T]
 .Ed
 .Sh ENVIRONMENT
 These environment variables are used by

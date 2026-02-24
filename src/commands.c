@@ -22,7 +22,6 @@
 #include "layout.h"
 #include "output.h"
 #include "macros.h"
-#include "scroller.h"
 #include "util.h"
 
 /* File-scope static for signal handler */
@@ -128,8 +127,7 @@ swl_cmd_focusstack(SwlServer *server, const Arg *arg)
 		}
 	}
 	swl_focusclient(server, c, 1);
-	if (server->selmon && server->selmon->lt[server->selmon->sellt]->arrange == swl_scroller)
-		swl_arrange(server, server->selmon);
+	swl_arrange(server, server->selmon);
 }
 
 void
@@ -142,43 +140,6 @@ swl_cmd_focusmon(SwlServer *server, const Arg *arg)
 		while (!server->selmon->wlr_output->enabled && i++ < nmons);
 	}
 	swl_focusclient(server, swl_focustop(server, server->selmon), 1);
-}
-
-void
-swl_cmd_setmfact(SwlServer *server, const Arg *arg)
-{
-	float f;
-	if (!arg || !server->selmon || !server->selmon->lt[server->selmon->sellt]->arrange)
-		return;
-	f = arg->f < 1.0f ? arg->f + server->selmon->mfact : arg->f - 1.0f;
-	if (f < 0.1 || f > 0.9)
-		return;
-	server->selmon->mfact = f;
-	swl_arrange(server, server->selmon);
-}
-
-void
-swl_cmd_incnmaster(SwlServer *server, const Arg *arg)
-{
-	if (!arg || !server->selmon)
-		return;
-	server->selmon->nmaster = MAX(server->selmon->nmaster + arg->i, 0);
-	swl_arrange(server, server->selmon);
-}
-
-void
-swl_cmd_setlayout(SwlServer *server, const Arg *arg)
-{
-	if (!server->selmon)
-		return;
-	if (!arg || !arg->v || arg->v != server->selmon->lt[server->selmon->sellt])
-		server->selmon->sellt ^= 1;
-	if (arg && arg->v)
-		server->selmon->lt[server->selmon->sellt] = (Layout *)arg->v;
-	snprintf(server->selmon->ltsymbol, sizeof(server->selmon->ltsymbol), "%s",
-			server->selmon->lt[server->selmon->sellt]->symbol);
-	swl_arrange(server, server->selmon);
-	swl_printstatus(server);
 }
 
 void
@@ -203,32 +164,6 @@ swl_cmd_tagmon(SwlServer *server, const Arg *arg)
 	Client *sel = swl_focustop(server, server->selmon);
 	if (sel)
 		swl_setmon(server, sel, swl_dirtomon(server, arg->i));
-}
-
-void
-swl_cmd_zoom(SwlServer *server, const Arg *arg)
-{
-	Client *c, *sel = swl_focustop(server, server->selmon);
-	if (!sel || !server->selmon || !server->selmon->lt[server->selmon->sellt]->arrange
-			|| sel->isfloating)
-		return;
-
-	wl_list_for_each(c, &server->clients, link) {
-		if (VISIBLEON(c, server->selmon) && !c->isfloating) {
-			if (c != sel)
-				break;
-			sel = nullptr;
-		}
-	}
-	if (&c->link == &server->clients)
-		return;
-	if (!sel)
-		sel = c;
-
-	wl_list_remove(&sel->link);
-	wl_list_insert(&server->clients, &sel->link);
-	swl_focusclient(server, sel, 1);
-	swl_arrange(server, server->selmon);
 }
 
 void
@@ -356,8 +291,7 @@ swl_setfloating(SwlServer *server, Client *c, int floating)
 {
 	Client *p = swl_client_get_parent(c);
 	c->isfloating = floating;
-	if (!c->mon || !swl_client_surface(c)->mapped
-			|| !c->mon->lt[c->mon->sellt]->arrange)
+	if (!c->mon || !swl_client_surface(c)->mapped)
 		return;
 	wlr_scene_node_reparent(&c->scene->node,
 			server->layers[c->isfullscreen || (p && p->isfullscreen)
@@ -618,12 +552,10 @@ swl_handle_map(struct wl_listener *listener, void *data)
 	{
 		Monitor *cm = c->mon ? c->mon : server->selmon;
 		Client *focused = swl_focustop(server, cm);
-		if (focused && !c->isfloating
-				&& cm && cm->lt[cm->sellt]->arrange == swl_scroller) {
+		if (focused && !c->isfloating)
 			wl_list_insert(&focused->link, &c->link);
-		} else {
+		else
 			wl_list_insert(&server->clients, &c->link);
-		}
 	}
 	wl_list_insert(&server->fstack, &c->flink);
 

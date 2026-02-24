@@ -129,11 +129,6 @@ typedef struct {
 static_assert(offsetof(Client, type) == 0, "Client.type must be first field");
 static_assert(offsetof(LayerSurface, type) == 0, "LayerSurface.type must be first field");
 
-typedef struct {
-	const char *symbol;
-	void (*arrange)(SwlServer *, Monitor *);
-} Layout;
-
 struct Monitor {
 	SwlServer *server;
 	struct wl_list link;
@@ -148,22 +143,14 @@ struct Monitor {
 	struct wlr_box m; /* monitor area, layout-relative */
 	struct wlr_box w; /* window area, layout-relative */
 	struct wl_list layers[4]; /* LayerSurface.link */
-	const Layout *lt[2];
-	unsigned int sellt;
-	float mfact;
 	bool gamma_lut_changed;
-	int nmaster;
 	int scroll_x;              /* horizontal viewport offset for scroller layout */
-	char ltsymbol[16];
 	bool asleep;
 };
 
 typedef struct {
 	const char *name;
-	float mfact;
-	int nmaster;
 	float scale;
-	const Layout *lt;
 	enum wl_output_transform rr;
 	int x, y;
 } MonitorRule;

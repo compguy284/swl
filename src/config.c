@@ -12,7 +12,6 @@
 
 #include "config.h"
 #include "commands.h"
-#include "layout.h"
 #include "macros.h"
 #include "scroller.h"
 
@@ -33,16 +32,9 @@ static const Rule default_rules[] = {
 	{ "firefox_EXAMPLE",  nullptr,       0,           -1 },
 };
 
-static const Layout default_layouts[] = {
-	/* symbol     arrange function */
-	{ "[]=",      swl_tile },
-	{ "><>",      nullptr },    /* no layout function means floating behavior */
-	{ "[M]",      swl_monocle },
-};
-
 static const MonitorRule default_monrules[] = {
-	/* name       mfact  nmaster scale layout              rotate/reflect                x    y */
-	{ nullptr,       0.55f, 1,      1,    &default_layouts[0], WL_OUTPUT_TRANSFORM_NORMAL,   -1,  -1 },
+	/* name       scale  rotate/reflect                x    y */
+	{ nullptr,    1,     WL_OUTPUT_TRANSFORM_NORMAL,   -1,  -1 },
 };
 
 /* commands */
@@ -55,16 +47,7 @@ static const Key default_keys[] = {
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_Return,      swl_cmd_spawn,          {.v = termcmd} },
 	{ MODKEY,                    XKB_KEY_j,           swl_cmd_focusstack,     {.i = +1} },
 	{ MODKEY,                    XKB_KEY_k,           swl_cmd_focusstack,     {.i = -1} },
-	{ MODKEY,                    XKB_KEY_i,           swl_cmd_incnmaster,     {.i = +1} },
-	{ MODKEY,                    XKB_KEY_d,           swl_cmd_incnmaster,     {.i = -1} },
-	{ MODKEY,                    XKB_KEY_h,           swl_cmd_setmfact,       {.f = -0.05f} },
-	{ MODKEY,                    XKB_KEY_l,           swl_cmd_setmfact,       {.f = +0.05f} },
-	{ MODKEY,                    XKB_KEY_Return,      swl_cmd_zoom,           {0} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_c,           swl_cmd_killclient,     {0} },
-	{ MODKEY,                    XKB_KEY_t,           swl_cmd_setlayout,      {.v = &default_layouts[0]} },
-	{ MODKEY,                    XKB_KEY_f,           swl_cmd_setlayout,      {.v = &default_layouts[1]} },
-	{ MODKEY,                    XKB_KEY_m,           swl_cmd_setlayout,      {.v = &default_layouts[2]} },
-	{ MODKEY,                    XKB_KEY_space,       swl_cmd_setlayout,      {0} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_space,       swl_cmd_togglefloating, {0} },
 	{ MODKEY,                    XKB_KEY_e,           swl_cmd_togglefullscreen, {0} },
 	{ MODKEY,                    XKB_KEY_comma,       swl_cmd_focusmon,       {.i = WLR_DIRECTION_LEFT} },
@@ -133,10 +116,6 @@ swl_config_defaults(SwlConfig *config)
 	/* Rules */
 	config->rules = default_rules;
 	config->rules_count = LENGTH(default_rules);
-
-	/* Layouts */
-	config->layouts = default_layouts;
-	config->layouts_count = LENGTH(default_layouts);
 
 	/* Monitor rules */
 	config->monrules = default_monrules;
@@ -210,24 +189,14 @@ static const struct { const char *name; SwlCmdFunc func; } action_funcs[] = {
 	{ "killclient",       swl_cmd_killclient },
 	{ "focusstack",       swl_cmd_focusstack },
 	{ "focusmon",         swl_cmd_focusmon },
-	{ "incnmaster",       swl_cmd_incnmaster },
-	{ "setmfact",         swl_cmd_setmfact },
-	{ "setlayout",        swl_cmd_setlayout },
 	{ "togglefloating",   swl_cmd_togglefloating },
 	{ "togglefullscreen", swl_cmd_togglefullscreen },
 	{ "tagmon",           swl_cmd_tagmon },
-	{ "zoom",             swl_cmd_zoom },
 	{ "moveresize",       swl_cmd_moveresize },
 	{ "quit",             swl_cmd_quit },
 	{ "chvt",             swl_cmd_chvt },
 	{ "scroller_cycle_width", swl_cmd_scroller_cycle_width },
 	{ "scroller_set_width", swl_cmd_scroller_set_width },
-};
-
-static const struct { const char *name; void (*func)(SwlServer *, Monitor *); } arrange_funcs[] = {
-	{ "tile",    swl_tile },
-	{ "monocle", swl_monocle },
-	{ "scroller", swl_scroller },
 };
 
 static const struct { const char *name; uint32_t mod; } mod_names[] = {
@@ -305,23 +274,10 @@ resolve_mods(toml_array_t *arr)
 	return mods;
 }
 
-/* --------------- Find layout by symbol name -------------------------- */
-
-static const Layout *
-find_layout(const Layout *layouts, size_t count, const char *symbol)
-{
-	for (size_t i = 0; i < count; i++) {
-		if (strcmp(layouts[i].symbol, symbol) == 0)
-			return &layouts[i];
-	}
-	return nullptr;
-}
-
 /* --------------- Parse arg for a given action ------------------------ */
 
 static Arg
-parse_arg(const char *action, toml_table_t *tab, const Layout *layouts,
-          size_t layouts_count)
+parse_arg(const char *action, toml_table_t *tab)
 {
 	Arg arg = {0};
 
@@ -335,29 +291,15 @@ parse_arg(const char *action, toml_table_t *tab, const Layout *layouts,
 				fprintf(stderr, "swl_config_load: unknown command '%s'\n", d.u.s);
 			free(d.u.s);
 		}
-	} else if (strcmp(action, "focusstack") == 0 || strcmp(action, "incnmaster") == 0
+	} else if (strcmp(action, "focusstack") == 0
 	           || strcmp(action, "scroller_cycle_width") == 0) {
 		toml_datum_t d = toml_int_in(tab, "arg");
 		if (d.ok)
 			arg.i = (int)d.u.i;
-	} else if (strcmp(action, "setmfact") == 0) {
-		toml_datum_t d = toml_double_in(tab, "arg");
-		if (d.ok)
-			arg.f = (float)d.u.d;
 	} else if (strcmp(action, "scroller_set_width") == 0) {
 		toml_datum_t d = toml_double_in(tab, "arg");
 		if (d.ok)
 			arg.f = (float)d.u.d;
-	} else if (strcmp(action, "setlayout") == 0) {
-		toml_datum_t d = toml_string_in(tab, "arg");
-		if (d.ok) {
-			const Layout *lt = find_layout(layouts, layouts_count, d.u.s);
-			if (lt)
-				arg.v = lt;
-			else
-				fprintf(stderr, "swl_config_load: unknown layout '%s'\n", d.u.s);
-			free(d.u.s);
-		}
 	} else if (strcmp(action, "focusmon") == 0 || strcmp(action, "tagmon") == 0) {
 		toml_datum_t d = toml_string_in(tab, "arg");
 		if (d.ok) {
@@ -663,50 +605,6 @@ parse_rules(toml_array_t *arr, SwlConfig *config)
 	return 0;
 }
 
-static int
-parse_layouts(toml_array_t *arr, SwlConfig *config)
-{
-	int n = toml_array_nelem(arr);
-	if (n == 0) return 0;
-
-	Layout *layouts = calloc((size_t)n, sizeof(Layout));
-	if (!layouts) return -1;
-
-	int count = 0;
-	for (int i = 0; i < n; i++) {
-		toml_table_t *entry = toml_table_at(arr, i);
-		if (!entry) continue;
-
-		toml_datum_t sym = toml_string_in(entry, "symbol");
-		if (!sym.ok) {
-			fprintf(stderr, "swl_config_load: layout[%d] missing 'symbol'\n", i);
-			continue;
-		}
-
-		Layout *lt = &layouts[count];
-		lt->symbol = strdup(sym.u.s);
-		free(sym.u.s);
-
-		lt->arrange = nullptr;
-		toml_datum_t ar = toml_string_in(entry, "arrange");
-		if (ar.ok) {
-			for (size_t j = 0; j < LENGTH(arrange_funcs); j++) {
-				if (strcmp(ar.u.s, arrange_funcs[j].name) == 0) {
-					lt->arrange = arrange_funcs[j].func;
-					break;
-				}
-			}
-			free(ar.u.s);
-		}
-
-		count++;
-	}
-
-	config->layouts = layouts;
-	config->layouts_count = (size_t)count;
-	return 0;
-}
-
 static enum wl_output_transform
 parse_transform(const char *str)
 {
@@ -742,26 +640,8 @@ parse_monitors(toml_array_t *arr, SwlConfig *config)
 		mr->name = d.ok ? strdup(d.u.s) : nullptr;
 		if (d.ok) free(d.u.s);
 
-		d = toml_double_in(entry, "mfact");
-		mr->mfact = d.ok ? (float)d.u.d : 0.55f;
-
-		d = toml_int_in(entry, "nmaster");
-		mr->nmaster = d.ok ? (int)d.u.i : 1;
-
 		d = toml_double_in(entry, "scale");
 		mr->scale = d.ok ? (float)d.u.d : 1.0f;
-
-		/* Resolve layout by symbol name; default to first layout */
-		mr->lt = (config->layouts_count > 0) ? &config->layouts[0] : nullptr;
-		d = toml_string_in(entry, "layout");
-		if (d.ok) {
-			const Layout *lt = find_layout(config->layouts, config->layouts_count, d.u.s);
-			if (lt)
-				mr->lt = lt;
-			else
-				fprintf(stderr, "swl_config_load: monitor[%d] unknown layout '%s'\n", i, d.u.s);
-			free(d.u.s);
-		}
 
 		d = toml_string_in(entry, "transform");
 		mr->rr = d.ok ? parse_transform(d.u.s) : WL_OUTPUT_TRANSFORM_NORMAL;
@@ -887,7 +767,7 @@ parse_key_bindings(toml_array_t *arr, SwlConfig *config)
 		if (mods_arr)
 			mods = resolve_mods(mods_arr);
 
-		Arg arg = parse_arg(action_d.u.s, entry, config->layouts, config->layouts_count);
+		Arg arg = parse_arg(action_d.u.s, entry);
 		free(action_d.u.s);
 
 		keys[count].mod = mods;
@@ -970,7 +850,7 @@ parse_mouse_bindings(toml_array_t *arr, SwlConfig *config)
 		if (mods_arr)
 			mods = resolve_mods(mods_arr);
 
-		Arg arg = parse_arg(action_d.u.s, entry, config->layouts, config->layouts_count);
+		Arg arg = parse_arg(action_d.u.s, entry);
 		free(action_d.u.s);
 
 		buttons[count].mod = mods;
@@ -1046,11 +926,6 @@ swl_config_load(SwlConfig *config, const char *path)
 	toml_table_t *commands = toml_table_in(root, "commands");
 	if (commands)
 		parse_commands(commands);
-
-	/* [[layout]] -- must be parsed before monitors and keybinds */
-	toml_array_t *layout_arr = toml_array_in(root, "layout");
-	if (layout_arr)
-		parse_layouts(layout_arr, config);
 
 	/* [[rule]] */
 	toml_array_t *rule_arr = toml_array_in(root, "rule");

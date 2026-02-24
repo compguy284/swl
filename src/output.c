@@ -65,12 +65,6 @@ swl_handle_new_output(struct wl_listener *listener, void *data)
 		if (!r->name || strstr(wlr_output->name, r->name)) {
 			m->m.x = r->x;
 			m->m.y = r->y;
-			m->mfact = r->mfact;
-			m->nmaster = r->nmaster;
-			m->lt[0] = r->lt;
-			m->lt[1] = &server->config.layouts[server->config.layouts_count > 1
-					&& r->lt != &server->config.layouts[1]];
-			snprintf(m->ltsymbol, sizeof(m->ltsymbol), "%s", m->lt[m->sellt]->symbol);
 			wlr_output_state_set_scale(&state, r->scale);
 			wlr_output_state_set_transform(&state, r->rr);
 			break;
@@ -310,7 +304,6 @@ swl_printstatus(SwlServer *server)
 		}
 
 		printf("%s selmon %u\n", m->wlr_output->name, m == server->selmon);
-		printf("%s layout %s\n", m->wlr_output->name, m->ltsymbol);
 	}
 	fflush(stdout);
 }

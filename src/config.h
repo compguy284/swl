@@ -45,10 +45,6 @@ typedef struct SwlConfig {
 	const Rule *rules;
 	size_t rules_count;
 
-	/* Layouts */
-	const Layout *layouts;
-	size_t layouts_count;
-
 	/* Monitor rules */
 	const MonitorRule *monrules;
 	size_t monrules_count;

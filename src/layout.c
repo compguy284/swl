@@ -45,19 +45,14 @@ swl_arrange(SwlServer *server, Monitor *m)
 	wlr_scene_node_set_enabled(&m->fullscreen_bg->node,
 		(c = swl_focustop(server, m)) && c->isfullscreen);
 
-	snprintf(m->ltsymbol, sizeof(m->ltsymbol), "%s", m->lt[m->sellt]->symbol);
-
 	wl_list_for_each(c, &server->clients, link) {
 		if (c->mon != m || c->scene->node.parent == server->layers[LyrFS])
 			continue;
-		wlr_scene_node_reparent(&c->scene->node,
-			(!m->lt[m->sellt]->arrange && c->isfloating) ? server->layers[LyrTile]
-			: (m->lt[m->sellt]->arrange && c->isfloating) ? server->layers[LyrFloat]
-			: c->scene->node.parent);
+		if (c->isfloating)
+			wlr_scene_node_reparent(&c->scene->node, server->layers[LyrFloat]);
 	}
 
-	if (m->lt[m->sellt]->arrange)
-		m->lt[m->sellt]->arrange(server, m);
+	swl_scroller(server, m);
 
 	swl_motionnotify(server, 0, nullptr, 0, 0, 0, 0);
 	swl_check_idle_inhibitor(server, nullptr);
@@ -75,8 +70,7 @@ swl_resize(SwlServer *server, Client *c, struct wlr_box geo, int interact)
 	bbox = interact ? &server->sgeom : &c->mon->w;
 	swl_client_set_bounds(c, geo.width, geo.height);
 	c->geom = geo;
-	if (!c->isfloating && !c->isfullscreen
-			&& c->mon->lt[c->mon->sellt]->arrange == swl_scroller) {
+	if (!c->isfloating && !c->isfullscreen) {
 		/* Scroller clients may be positioned off-screen; only enforce minimum size */
 		c->geom.width = MAX(1 + 2 * (int)c->bw, c->geom.width);
 		c->geom.height = MAX(1 + 2 * (int)c->bw, c->geom.height);
@@ -119,57 +113,3 @@ swl_resize(SwlServer *server, Client *c, struct wlr_box geo, int interact)
 	wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &clip);
 }
 
-void
-swl_tile(SwlServer *server, Monitor *m)
-{
-	unsigned int mw, my, ty;
-	int i, n = 0;
-	Client *c;
-
-	wl_list_for_each(c, &server->clients, link)
-		if (VISIBLEON(c, m) && !c->isfloating && !c->isfullscreen)
-			n++;
-	if (n == 0)
-		return;
-
-	if (n > m->nmaster)
-		mw = m->nmaster ? (int)roundf(m->w.width * m->mfact) : 0;
-	else
-		mw = m->w.width;
-
-	i = my = ty = 0;
-	wl_list_for_each(c, &server->clients, link) {
-		if (!VISIBLEON(c, m) || c->isfloating || c->isfullscreen)
-			continue;
-		if (i < m->nmaster) {
-			swl_resize(server, c, (struct wlr_box){.x = m->w.x,
-				.y = m->w.y + my, .width = mw,
-				.height = (m->w.height - my) / (MIN(n, m->nmaster) - i)}, 0);
-			my += c->geom.height;
-		} else {
-			swl_resize(server, c, (struct wlr_box){.x = m->w.x + mw,
-				.y = m->w.y + ty, .width = m->w.width - mw,
-				.height = (m->w.height - ty) / (n - i)}, 0);
-			ty += c->geom.height;
-		}
-		i++;
-	}
-}
-
-void
-swl_monocle(SwlServer *server, Monitor *m)
-{
-	Client *c;
-	int n = 0;
-
-	wl_list_for_each(c, &server->clients, link) {
-		if (!VISIBLEON(c, m) || c->isfloating || c->isfullscreen)
-			continue;
-		swl_resize(server, c, m->w, 0);
-		n++;
-	}
-	if (n)
-		snprintf(m->ltsymbol, LENGTH(m->ltsymbol), "[%d]", n);
-	if ((c = swl_focustop(server, m)))
-		wlr_scene_node_raise_to_top(&c->scene->node);
-}

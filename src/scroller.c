@@ -179,8 +179,6 @@ position:
 		}
 	}
 
-	snprintf(m->ltsymbol, LENGTH(m->ltsymbol), "[%d]|", n);
-
 	free(cols);
 	free(vx);
 	free(vw);
