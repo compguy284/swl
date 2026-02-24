@@ -63,6 +63,7 @@ typedef struct SwlConfig {
 	size_t scroller_preset_count;
 	enum SwlScrollerCenter scroller_center;
 	bool scroller_center_single;
+	int gap_width;
 
 	/* Effects (scenefx) */
 	int corner_radius;

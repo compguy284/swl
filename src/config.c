@@ -136,6 +136,7 @@ swl_config_defaults(SwlConfig *config)
 	config->scroller_preset_count = LENGTH(default_presets);
 	config->scroller_center = ScrollCenterNever;
 	config->scroller_center_single = false;
+	config->gap_width = 0;
 
 	/* Effects (scenefx) */
 	config->corner_radius = 0;
@@ -495,6 +496,9 @@ parse_scroller(toml_table_t *tab, SwlConfig *config)
 
 	d = toml_bool_in(tab, "always_center_single_column");
 	if (d.ok) config->scroller_center_single = d.u.b;
+
+	d = toml_int_in(tab, "gap");
+	if (d.ok) config->gap_width = (int)d.u.i;
 
 	d = toml_string_in(tab, "center_focused_column");
 	if (d.ok) {

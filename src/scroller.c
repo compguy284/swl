@@ -269,8 +269,9 @@ swl_scroller(SwlServer *server, Monitor *m)
 	}
 
 	/* Second pass: populate arrays */
+	int gap = server->config.gap_width;
 	int ci = 0, col_idx = -1;
-	int strip_x = m->w.x;
+	int strip_x = m->w.x + gap;
 	wl_list_for_each(c, &server->clients, link) {
 		if (!IS_TILED_ON(c, m))
 			continue;
@@ -281,7 +282,7 @@ swl_scroller(SwlServer *server, Monitor *m)
 			col_count[col_idx] = 1;
 			vw[col_idx] = resolve_width(c, m);
 			vx[col_idx] = strip_x;
-			strip_x += vw[col_idx];
+			strip_x += vw[col_idx] + gap;
 		} else {
 			col_count[col_idx]++;
 		}
@@ -346,11 +347,16 @@ position:
 		int screen_x = vx[i] - m->scroll_x;
 		int members = col_count[i];
 
+		int total_vgap = gap * (members + 1);
+		int avail_h = m->w.height - total_vgap;
+		int slot_h = avail_h / members;
+
 		for (int j = 0; j < members; j++) {
 			c = all[col_start[i] + j];
-			int slot_h = m->w.height / members;
-			int y_pos = m->w.y + j * slot_h;
-			int h = (j == members - 1) ? (m->w.height - j * slot_h) : slot_h;
+			int y_pos = m->w.y + gap + j * (slot_h + gap);
+			int h = (j == members - 1)
+				? (m->w.y + m->w.height - gap - y_pos)
+				: slot_h;
 
 			struct wlr_box geo = {
 				.x = screen_x,

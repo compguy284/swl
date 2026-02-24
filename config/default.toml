@@ -71,6 +71,7 @@ default_column_width = 0.5
 preset_column_widths = [0.5, 0.67, 1.0]
 center_focused_column = "never"
 always_center_single_column = false
+gap = 0
 
 # Window rules (examples, commented out):
 # [[rule]]
