@@ -6,10 +6,9 @@
 #define MAX(A, B) ({ typeof(A) _a = (A); typeof(B) _b = (B); _a > _b ? _a : _b; })
 #define MIN(A, B) ({ typeof(A) _a = (A); typeof(B) _b = (B); _a < _b ? _a : _b; })
 #define CLEANMASK(mask)         (mask & ~WLR_MODIFIER_CAPS)
-#define VISIBLEON(C, M)         ((M) && (C)->mon == (M) && ((C)->tags & (M)->tagset[(M)->seltags]))
+#define VISIBLEON(C, M)         ((M) && (C)->mon == (M))
 #define LENGTH(X)               (sizeof X / sizeof X[0])
 #define END(A)                  ((A) + LENGTH(A))
-#define TAGMASK(server)         ((1u << (server)->config.tag_count) - 1)
 #define LISTEN(E, L, H)         wl_signal_add((E), ((L)->notify = (H), (L)))
 
 /* Wrapper for heap-allocated listeners that carry a SwlServer back-pointer */

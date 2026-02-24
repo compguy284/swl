@@ -5,7 +5,6 @@
 [general]
 sloppy_focus = true
 bypass_surface_visibility = false
-tag_count = 9
 
 [appearance]
 border_width = 1
@@ -93,10 +92,6 @@ always_center_single_column = false
 
 # Window rules (examples, commented out):
 # [[rule]]
-# app_id = "firefox"
-# tags = 256
-#
-# [[rule]]
 # app_id = "Gimp"
 # floating = true
 
@@ -158,11 +153,6 @@ key = "Return"
 action = "zoom"
 
 [[bind.key]]
-mods = ["mod"]
-key = "Tab"
-action = "view"
-
-[[bind.key]]
 mods = ["mod", "shift"]
 key = "c"
 action = "killclient"
@@ -220,18 +210,6 @@ action = "togglefullscreen"
 
 [[bind.key]]
 mods = ["mod"]
-key = "0"
-action = "view"
-arg = "all"
-
-[[bind.key]]
-mods = ["mod", "shift"]
-key = "parenright"
-action = "tag"
-arg = "all"
-
-[[bind.key]]
-mods = ["mod"]
 key = "comma"
 action = "focusmon"
 arg = "left"
@@ -259,9 +237,8 @@ mods = ["mod", "shift"]
 key = "q"
 action = "quit"
 
-# Note: Tag bindings (Mod+1-9, Mod+Shift+!-() and CHVT bindings
-# (Ctrl+Alt+F1-F12) are auto-generated based on tag_count.
-# Ctrl+Alt+Backspace -> quit is also auto-generated.
+# Note: CHVT bindings (Ctrl+Alt+F1-F12) and Ctrl+Alt+Backspace -> quit
+# are auto-generated.
 
 # Mouse bindings
 [[bind.mouse]]

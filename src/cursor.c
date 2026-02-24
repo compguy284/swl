@@ -77,7 +77,7 @@ swl_handle_cursor_button(struct wl_listener *listener, void *data)
 			wlr_cursor_set_xcursor(server->cursor, server->cursor_mgr, "default");
 			server->cursor_mode = CurNormal;
 			server->selmon = swl_xytomon(server, server->cursor->x, server->cursor->y);
-			swl_setmon(server, server->grabc, server->selmon, 0);
+			swl_setmon(server, server->grabc, server->selmon);
 			server->grabc = nullptr;
 			return;
 		}

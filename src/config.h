@@ -18,9 +18,6 @@ typedef struct SwlConfig {
 	float urgentcolor[4];
 	float fullscreen_bg[4];
 
-	/* Tags */
-	int tag_count;
-
 	/* Logging */
 	int log_level;
 

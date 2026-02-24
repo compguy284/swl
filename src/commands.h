@@ -14,17 +14,13 @@ void swl_cmd_incnmaster(SwlServer *server, const Arg *arg);
 void swl_cmd_setlayout(SwlServer *server, const Arg *arg);
 void swl_cmd_togglefloating(SwlServer *server, const Arg *arg);
 void swl_cmd_togglefullscreen(SwlServer *server, const Arg *arg);
-void swl_cmd_view(SwlServer *server, const Arg *arg);
-void swl_cmd_tag(SwlServer *server, const Arg *arg);
 void swl_cmd_tagmon(SwlServer *server, const Arg *arg);
-void swl_cmd_toggletag(SwlServer *server, const Arg *arg);
-void swl_cmd_toggleview(SwlServer *server, const Arg *arg);
 void swl_cmd_zoom(SwlServer *server, const Arg *arg);
 void swl_cmd_moveresize(SwlServer *server, const Arg *arg);
 
 void swl_focusclient(SwlServer *server, Client *c, int lift);
 Client *swl_focustop(SwlServer *server, Monitor *m);
-void swl_setmon(SwlServer *server, Client *c, Monitor *m, uint32_t newtags);
+void swl_setmon(SwlServer *server, Client *c, Monitor *m);
 void swl_setfloating(SwlServer *server, Client *c, int floating);
 void swl_setfullscreen(SwlServer *server, Client *c, int fullscreen);
 void swl_applyrules(SwlServer *server, Client *c);

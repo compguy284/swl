@@ -81,7 +81,6 @@ typedef struct {
 	struct wl_listener set_hints;
 #endif
 	unsigned int bw;
-	uint32_t tags;
 	bool isfloating, isurgent, isfullscreen;
 	uint32_t resize; /* configure serial of a pending resize */
 	float scroller_cw;         /* column width: fraction (0<x<=1) or pixels (>1), 0 = use default */
@@ -150,9 +149,7 @@ struct Monitor {
 	struct wlr_box w; /* window area, layout-relative */
 	struct wl_list layers[4]; /* LayerSurface.link */
 	const Layout *lt[2];
-	unsigned int seltags;
 	unsigned int sellt;
-	uint32_t tagset[2];
 	float mfact;
 	bool gamma_lut_changed;
 	int nmaster;
@@ -180,7 +177,6 @@ typedef struct {
 typedef struct {
 	const char *id;
 	const char *title;
-	uint32_t tags;
 	int isfloating;
 	int monitor;
 } Rule;

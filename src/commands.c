@@ -198,61 +198,11 @@ swl_cmd_togglefullscreen(SwlServer *server, const Arg *arg)
 }
 
 void
-swl_cmd_view(SwlServer *server, const Arg *arg)
-{
-	if (!server->selmon || (arg->ui & TAGMASK(server)) == server->selmon->tagset[server->selmon->seltags])
-		return;
-	server->selmon->seltags ^= 1;
-	if (arg->ui & TAGMASK(server))
-		server->selmon->tagset[server->selmon->seltags] = arg->ui & TAGMASK(server);
-	swl_focusclient(server, swl_focustop(server, server->selmon), 1);
-	swl_arrange(server, server->selmon);
-	swl_printstatus(server);
-}
-
-void
-swl_cmd_tag(SwlServer *server, const Arg *arg)
-{
-	Client *sel = swl_focustop(server, server->selmon);
-	if (!sel || (arg->ui & TAGMASK(server)) == 0)
-		return;
-	sel->tags = arg->ui & TAGMASK(server);
-	swl_focusclient(server, swl_focustop(server, server->selmon), 1);
-	swl_arrange(server, server->selmon);
-	swl_printstatus(server);
-}
-
-void
 swl_cmd_tagmon(SwlServer *server, const Arg *arg)
 {
 	Client *sel = swl_focustop(server, server->selmon);
 	if (sel)
-		swl_setmon(server, sel, swl_dirtomon(server, arg->i), 0);
-}
-
-void
-swl_cmd_toggletag(SwlServer *server, const Arg *arg)
-{
-	uint32_t newtags;
-	Client *sel = swl_focustop(server, server->selmon);
-	if (!sel || !(newtags = sel->tags ^ (arg->ui & TAGMASK(server))))
-		return;
-	sel->tags = newtags;
-	swl_focusclient(server, swl_focustop(server, server->selmon), 1);
-	swl_arrange(server, server->selmon);
-	swl_printstatus(server);
-}
-
-void
-swl_cmd_toggleview(SwlServer *server, const Arg *arg)
-{
-	uint32_t newtagset;
-	if (!(newtagset = server->selmon ? server->selmon->tagset[server->selmon->seltags] ^ (arg->ui & TAGMASK(server)) : 0))
-		return;
-	server->selmon->tagset[server->selmon->seltags] = newtagset;
-	swl_focusclient(server, swl_focustop(server, server->selmon), 1);
-	swl_arrange(server, server->selmon);
-	swl_printstatus(server);
+		swl_setmon(server, sel, swl_dirtomon(server, arg->i));
 }
 
 void
@@ -382,7 +332,7 @@ swl_focustop(SwlServer *server, Monitor *m)
 }
 
 void
-swl_setmon(SwlServer *server, Client *c, Monitor *m, uint32_t newtags)
+swl_setmon(SwlServer *server, Client *c, Monitor *m)
 {
 	Monitor *oldmon = c->mon;
 
@@ -395,7 +345,6 @@ swl_setmon(SwlServer *server, Client *c, Monitor *m, uint32_t newtags)
 		swl_arrange(server, oldmon);
 	if (m) {
 		swl_resize(server, c, c->geom, 0);
-		c->tags = newtags ? newtags : m->tagset[m->seltags];
 		swl_setfullscreen(server, c, c->isfullscreen);
 		swl_setfloating(server, c, c->isfloating);
 	}
@@ -452,7 +401,6 @@ void
 swl_applyrules(SwlServer *server, Client *c)
 {
 	const char *appid, *title;
-	uint32_t newtags = 0;
 	int i;
 	const Rule *r;
 	Monitor *mon = server->selmon, *m;
@@ -465,7 +413,6 @@ swl_applyrules(SwlServer *server, Client *c)
 		if ((!r->title || strstr(title, r->title))
 				&& (!r->id || strstr(appid, r->id))) {
 			c->isfloating = r->isfloating;
-			newtags |= r->tags;
 			i = 0;
 			wl_list_for_each(m, &server->mons, link) {
 				if (r->monitor == i++)
@@ -474,7 +421,7 @@ swl_applyrules(SwlServer *server, Client *c)
 		}
 	}
 	c->isfloating |= swl_client_is_float_type(c);
-	swl_setmon(server, c, mon, newtags);
+	swl_setmon(server, c, mon);
 }
 
 /* ===== Static listener helpers ===== */
@@ -562,7 +509,7 @@ commitnotify(struct wl_listener *listener, void *data)
 		swl_applyrules(server, c);
 		if (c->mon)
 			swl_client_set_scale(swl_client_surface(c), c->mon->wlr_output->scale);
-		swl_setmon(server, c, nullptr, 0);
+		swl_setmon(server, c, nullptr);
 		wlr_xdg_toplevel_set_wm_capabilities(c->surface.xdg->toplevel,
 				WLR_XDG_TOPLEVEL_WM_CAPABILITIES_FULLSCREEN);
 		if (c->decoration)
@@ -682,7 +629,7 @@ swl_handle_map(struct wl_listener *listener, void *data)
 
 	if ((p = swl_client_get_parent(c))) {
 		c->isfloating = true;
-		swl_setmon(server, c, p->mon, p->tags);
+		swl_setmon(server, c, p->mon);
 	} else {
 		swl_applyrules(server, c);
 	}
@@ -692,7 +639,7 @@ swl_handle_map(struct wl_listener *listener, void *data)
 unset_fullscreen:
 	m = c->mon ? c->mon : swl_xytomon(server, c->geom.x, c->geom.y);
 	wl_list_for_each(w, &server->clients, link) {
-		if (w != c && w != p && w->isfullscreen && m == w->mon && (w->tags & c->tags))
+		if (w != c && w != p && w->isfullscreen && m == w->mon)
 			swl_setfullscreen(server, w, false);
 	}
 }
@@ -725,7 +672,7 @@ swl_handle_unmap(struct wl_listener *listener, void *data)
 		}
 	} else {
 		wl_list_remove(&c->link);
-		swl_setmon(server, c, nullptr, 0);
+		swl_setmon(server, c, nullptr);
 		wl_list_remove(&c->flink);
 	}
 

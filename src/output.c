@@ -4,7 +4,6 @@
  * Handles monitor creation, destruction, rendering, output management,
  * power management, GPU reset, status printing, and related helpers.
  */
-#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -61,7 +60,6 @@ swl_handle_new_output(struct wl_listener *listener, void *data)
 
 	wlr_output_state_init(&state);
 	/* Initialize monitor state using configured rules */
-	m->tagset[0] = m->tagset[1] = 1;
 	for (ri = 0; ri < server->config.monrules_count; ri++) {
 		const MonitorRule *r = &server->config.monrules[ri];
 		if (!r->name || strstr(wlr_output->name, r->name)) {
@@ -210,7 +208,7 @@ swl_handle_layout_change(struct wl_listener *listener, void *data)
 	if (server->selmon && server->selmon->wlr_output->enabled) {
 		wl_list_for_each(c, &server->clients, link) {
 			if (!c->mon && swl_client_surface(c)->mapped)
-				swl_setmon(server, c, server->selmon, c->tags);
+				swl_setmon(server, c, server->selmon);
 		}
 		swl_focusclient(server, swl_focustop(server, server->selmon), 1);
 		if (server->selmon->lock_surface) {
@@ -297,34 +295,21 @@ swl_printstatus(SwlServer *server)
 {
 	Monitor *m = nullptr;
 	Client *c;
-	uint32_t occ, urg, sel;
 
 	wl_list_for_each(m, &server->mons, link) {
-		occ = urg = 0;
-		wl_list_for_each(c, &server->clients, link) {
-			if (c->mon != m)
-				continue;
-			occ |= c->tags;
-			if (c->isurgent)
-				urg |= c->tags;
-		}
 		if ((c = swl_focustop(server, m))) {
 			printf("%s title %s\n", m->wlr_output->name, swl_client_get_title(c));
 			printf("%s appid %s\n", m->wlr_output->name, swl_client_get_appid(c));
 			printf("%s fullscreen %d\n", m->wlr_output->name, c->isfullscreen);
 			printf("%s floating %d\n", m->wlr_output->name, c->isfloating);
-			sel = c->tags;
 		} else {
 			printf("%s title \n", m->wlr_output->name);
 			printf("%s appid \n", m->wlr_output->name);
 			printf("%s fullscreen \n", m->wlr_output->name);
 			printf("%s floating \n", m->wlr_output->name);
-			sel = 0;
 		}
 
 		printf("%s selmon %u\n", m->wlr_output->name, m == server->selmon);
-		printf("%s tags %"PRIu32" %"PRIu32" %"PRIu32" %"PRIu32"\n",
-			m->wlr_output->name, occ, m->tagset[m->seltags], sel, urg);
 		printf("%s layout %s\n", m->wlr_output->name, m->ltsymbol);
 	}
 	fflush(stdout);
@@ -398,7 +383,7 @@ closemon(SwlServer *server, Monitor *m)
 			swl_resize(server, c, (struct wlr_box){.x = c->geom.x - m->w.width, .y = c->geom.y,
 					.width = c->geom.width, .height = c->geom.height}, 0);
 		if (c->mon == m)
-			swl_setmon(server, c, server->selmon, c->tags);
+			swl_setmon(server, c, server->selmon);
 	}
 	swl_focusclient(server, swl_focustop(server, server->selmon), 1);
 	swl_printstatus(server);

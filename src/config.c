@@ -25,18 +25,12 @@
 /* If you want to use the windows key for MODKEY, use WLR_MODIFIER_LOGO */
 #define MODKEY WLR_MODIFIER_ALT
 
-#define TAGKEYS(KEY,SKEY,TAG) \
-	{ MODKEY,                    KEY,            swl_cmd_view,            {.ui = 1 << TAG} }, \
-	{ MODKEY|WLR_MODIFIER_CTRL,  KEY,            swl_cmd_toggleview,      {.ui = 1 << TAG} }, \
-	{ MODKEY|WLR_MODIFIER_SHIFT, SKEY,           swl_cmd_tag,             {.ui = 1 << TAG} }, \
-	{ MODKEY|WLR_MODIFIER_CTRL|WLR_MODIFIER_SHIFT,SKEY,swl_cmd_toggletag, {.ui = 1 << TAG} }
-
 #define CHVT(n) { WLR_MODIFIER_CTRL|WLR_MODIFIER_ALT,XKB_KEY_XF86Switch_VT_##n, swl_cmd_chvt, {.ui = (n)} }
 
 static const Rule default_rules[] = {
-	/* app_id             title       tags mask     isfloating   monitor */
-	{ "Gimp_EXAMPLE",     nullptr,       0,            1,           -1 },
-	{ "firefox_EXAMPLE",  nullptr,       1 << 8,       0,           -1 },
+	/* app_id             title       isfloating   monitor */
+	{ "Gimp_EXAMPLE",     nullptr,       1,           -1 },
+	{ "firefox_EXAMPLE",  nullptr,       0,           -1 },
 };
 
 static const Layout default_layouts[] = {
@@ -66,7 +60,6 @@ static const Key default_keys[] = {
 	{ MODKEY,                    XKB_KEY_h,           swl_cmd_setmfact,       {.f = -0.05f} },
 	{ MODKEY,                    XKB_KEY_l,           swl_cmd_setmfact,       {.f = +0.05f} },
 	{ MODKEY,                    XKB_KEY_Return,      swl_cmd_zoom,           {0} },
-	{ MODKEY,                    XKB_KEY_Tab,         swl_cmd_view,           {0} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_c,           swl_cmd_killclient,     {0} },
 	{ MODKEY,                    XKB_KEY_t,           swl_cmd_setlayout,      {.v = &default_layouts[0]} },
 	{ MODKEY,                    XKB_KEY_f,           swl_cmd_setlayout,      {.v = &default_layouts[1]} },
@@ -74,21 +67,10 @@ static const Key default_keys[] = {
 	{ MODKEY,                    XKB_KEY_space,       swl_cmd_setlayout,      {0} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_space,       swl_cmd_togglefloating, {0} },
 	{ MODKEY,                    XKB_KEY_e,           swl_cmd_togglefullscreen, {0} },
-	{ MODKEY,                    XKB_KEY_0,           swl_cmd_view,           {.ui = ~0u} },
-	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_parenright,  swl_cmd_tag,            {.ui = ~0u} },
 	{ MODKEY,                    XKB_KEY_comma,       swl_cmd_focusmon,       {.i = WLR_DIRECTION_LEFT} },
 	{ MODKEY,                    XKB_KEY_period,      swl_cmd_focusmon,       {.i = WLR_DIRECTION_RIGHT} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_less,        swl_cmd_tagmon,         {.i = WLR_DIRECTION_LEFT} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_greater,     swl_cmd_tagmon,         {.i = WLR_DIRECTION_RIGHT} },
-	TAGKEYS(          XKB_KEY_1, XKB_KEY_exclam,                              0),
-	TAGKEYS(          XKB_KEY_2, XKB_KEY_at,                                  1),
-	TAGKEYS(          XKB_KEY_3, XKB_KEY_numbersign,                          2),
-	TAGKEYS(          XKB_KEY_4, XKB_KEY_dollar,                              3),
-	TAGKEYS(          XKB_KEY_5, XKB_KEY_percent,                             4),
-	TAGKEYS(          XKB_KEY_6, XKB_KEY_asciicircum,                         5),
-	TAGKEYS(          XKB_KEY_7, XKB_KEY_ampersand,                           6),
-	TAGKEYS(          XKB_KEY_8, XKB_KEY_asterisk,                            7),
-	TAGKEYS(          XKB_KEY_9, XKB_KEY_parenleft,                           8),
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_q,           swl_cmd_quit,           {0} },
 
 	/* Ctrl-Alt-Backspace and Ctrl-Alt-Fx used to be handled by X server */
@@ -122,9 +104,6 @@ swl_config_defaults(SwlConfig *config)
 		config->urgentcolor[i] = uc[i];
 		config->fullscreen_bg[i] = fb[i];
 	}
-
-	/* Tags */
-	config->tag_count = 9;
 
 	/* Logging */
 	config->log_level = WLR_ERROR;
@@ -236,11 +215,7 @@ static const struct { const char *name; SwlCmdFunc func; } action_funcs[] = {
 	{ "setlayout",        swl_cmd_setlayout },
 	{ "togglefloating",   swl_cmd_togglefloating },
 	{ "togglefullscreen", swl_cmd_togglefullscreen },
-	{ "view",             swl_cmd_view },
-	{ "tag",              swl_cmd_tag },
 	{ "tagmon",           swl_cmd_tagmon },
-	{ "toggletag",        swl_cmd_toggletag },
-	{ "toggleview",       swl_cmd_toggleview },
 	{ "zoom",             swl_cmd_zoom },
 	{ "moveresize",       swl_cmd_moveresize },
 	{ "quit",             swl_cmd_quit },
@@ -266,19 +241,6 @@ static const struct { const char *name; unsigned int btn; } button_names[] = {
 	{ "left",   BTN_LEFT },
 	{ "middle", BTN_MIDDLE },
 	{ "right",  BTN_RIGHT },
-};
-
-/* Shift-key symbols for tag number keys 1-9 (US layout) */
-static constexpr xkb_keysym_t tag_shift_syms[] = {
-	XKB_KEY_exclam,      /* 1 -> ! */
-	XKB_KEY_at,          /* 2 -> @ */
-	XKB_KEY_numbersign,  /* 3 -> # */
-	XKB_KEY_dollar,      /* 4 -> $ */
-	XKB_KEY_percent,     /* 5 -> % */
-	XKB_KEY_asciicircum, /* 6 -> ^ */
-	XKB_KEY_ampersand,   /* 7 -> & */
-	XKB_KEY_asterisk,    /* 8 -> * */
-	XKB_KEY_parenleft,   /* 9 -> ( */
 };
 
 /* --------------- Commands storage (file-scope) ----------------------- */
@@ -386,19 +348,6 @@ parse_arg(const char *action, toml_table_t *tab, const Layout *layouts,
 		toml_datum_t d = toml_double_in(tab, "arg");
 		if (d.ok)
 			arg.f = (float)d.u.d;
-	} else if (strcmp(action, "view") == 0 || strcmp(action, "tag") == 0 ||
-	           strcmp(action, "toggletag") == 0 || strcmp(action, "toggleview") == 0) {
-		/* Can be int or "all" */
-		toml_datum_t ds = toml_string_in(tab, "arg");
-		if (ds.ok) {
-			if (strcmp(ds.u.s, "all") == 0)
-				arg.ui = ~0u;
-			free(ds.u.s);
-		} else {
-			toml_datum_t di = toml_int_in(tab, "arg");
-			if (di.ok)
-				arg.ui = (uint32_t)di.u.i;
-		}
 	} else if (strcmp(action, "setlayout") == 0) {
 		toml_datum_t d = toml_string_in(tab, "arg");
 		if (d.ok) {
@@ -448,9 +397,6 @@ parse_general(toml_table_t *tab, SwlConfig *config)
 
 	d = toml_bool_in(tab, "bypass_surface_visibility");
 	if (d.ok) config->bypass_surface_visibility = d.u.b;
-
-	d = toml_int_in(tab, "tag_count");
-	if (d.ok) config->tag_count = (int)d.u.i;
 }
 
 static void
@@ -703,9 +649,6 @@ parse_rules(toml_array_t *arr, SwlConfig *config)
 		r->title = d.ok ? strdup(d.u.s) : nullptr;
 		if (d.ok) free(d.u.s);
 
-		d = toml_int_in(entry, "tags");
-		r->tags = d.ok ? (uint32_t)d.u.i : 0;
-
 		d = toml_bool_in(entry, "floating");
 		r->isfloating = d.ok ? d.u.b : false;
 
@@ -896,12 +839,10 @@ parse_key_bindings(toml_array_t *arr, SwlConfig *config)
 
 	/*
 	 * Extra keys needed:
-	 * - 4 TAGKEYS per tag (view, toggleview, tag, toggletag)
 	 * - 1 Ctrl+Alt+Backspace -> quit
 	 * - 12 CHVT bindings (F1-F12)
 	 */
-	int tag_count = config->tag_count;
-	int extra = tag_count * 4 + 1 + 12;
+	int extra = 1 + 12;
 	int total = n + extra;
 
 	Key *keys = calloc((size_t)total, sizeof(Key));
@@ -953,40 +894,6 @@ parse_key_bindings(toml_array_t *arr, SwlConfig *config)
 		keys[count].keysym = keysym;
 		keys[count].func = func;
 		keys[count].arg = arg;
-		count++;
-	}
-
-	/* Append TAGKEYS for each tag */
-	for (int t = 0; t < tag_count && t < 9; t++) {
-		xkb_keysym_t num_key = XKB_KEY_1 + (xkb_keysym_t)t;
-		xkb_keysym_t shift_key = tag_shift_syms[t];
-
-		/* MOD + num -> view */
-		keys[count].mod = modkey_value;
-		keys[count].keysym = num_key;
-		keys[count].func = swl_cmd_view;
-		keys[count].arg = (Arg){.ui = 1u << t};
-		count++;
-
-		/* MOD + CTRL + num -> toggleview */
-		keys[count].mod = modkey_value | WLR_MODIFIER_CTRL;
-		keys[count].keysym = num_key;
-		keys[count].func = swl_cmd_toggleview;
-		keys[count].arg = (Arg){.ui = 1u << t};
-		count++;
-
-		/* MOD + SHIFT + shift_sym -> tag */
-		keys[count].mod = modkey_value | WLR_MODIFIER_SHIFT;
-		keys[count].keysym = shift_key;
-		keys[count].func = swl_cmd_tag;
-		keys[count].arg = (Arg){.ui = 1u << t};
-		count++;
-
-		/* MOD + CTRL + SHIFT + shift_sym -> toggletag */
-		keys[count].mod = modkey_value | WLR_MODIFIER_CTRL | WLR_MODIFIER_SHIFT;
-		keys[count].keysym = shift_key;
-		keys[count].func = swl_cmd_toggletag;
-		keys[count].arg = (Arg){.ui = 1u << t};
 		count++;
 	}
 
