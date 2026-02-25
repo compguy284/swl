@@ -196,6 +196,30 @@ arg = "down"
 
 [[bind.key]]
 mods = ["mod", "shift"]
+key = "Left"
+action = "swapdir"
+arg = "left"
+
+[[bind.key]]
+mods = ["mod", "shift"]
+key = "Right"
+action = "swapdir"
+arg = "right"
+
+[[bind.key]]
+mods = ["mod", "shift"]
+key = "Up"
+action = "swapdir"
+arg = "up"
+
+[[bind.key]]
+mods = ["mod", "shift"]
+key = "Down"
+action = "swapdir"
+arg = "down"
+
+[[bind.key]]
+mods = ["mod", "shift"]
 key = "q"
 action = "quit"
 

@@ -234,6 +234,137 @@ swl_cmd_focusdir(SwlServer *server, const Arg *arg)
 	}
 }
 
+/* ===== swapdir command ===== */
+
+/* Collect all tiled members of a column into buf[]. Returns count. */
+static int
+collect_column_members(SwlServer *server, Client *head, Monitor *m,
+                       Client **buf, int max)
+{
+	int n = 0;
+	if (n < max)
+		buf[n++] = head;
+	Client *iter;
+	wl_list_for_each(iter, &head->link, link) {
+		if (&iter->link == &server->clients)
+			break;
+		if (!IS_TILED_ON(iter, m))
+			continue;
+		if (!iter->scroller_continuation)
+			break;
+		if (n < max)
+			buf[n++] = iter;
+	}
+	return n;
+}
+
+void
+swl_cmd_swapdir(SwlServer *server, const Arg *arg)
+{
+	Client *sel = swl_focustop(server, server->selmon);
+	if (!sel || sel->isfloating || sel->isfullscreen)
+		return;
+
+	Monitor *m = server->selmon;
+	Client *head = find_column_head(server, sel, m);
+	int dir = arg->i; /* 0=left, 1=right, 2=up, 3=down */
+
+	if (dir <= 1) {
+		/* Left/Right: swap entire columns */
+		int hdir = (dir == 0) ? -1 : 1;
+		Client *adj_head = find_adjacent_column_head(server, head, m, hdir);
+		if (!adj_head)
+			return;
+
+		int adj_count = column_member_count(server, adj_head, m);
+		Client *adj_members[64];
+		int n = collect_column_members(server, adj_head, m, adj_members, 64);
+		if (n != adj_count || n == 0)
+			return;
+
+		/* Remove all adjacent column members from the list */
+		for (int i = 0; i < n; i++)
+			wl_list_remove(&adj_members[i]->link);
+
+		if (dir == 1) {
+			/* Swap right: move right column to before current column's head */
+			struct wl_list *insert_point = head->link.prev;
+			for (int i = 0; i < n; i++) {
+				wl_list_insert(insert_point, &adj_members[i]->link);
+				insert_point = &adj_members[i]->link;
+			}
+		} else {
+			/* Swap left: move left column to after current column's last member */
+			Client *last = find_last_column_member(server, head, m);
+			struct wl_list *insert_point = &last->link;
+			for (int i = 0; i < n; i++) {
+				wl_list_insert(insert_point, &adj_members[i]->link);
+				insert_point = &adj_members[i]->link;
+			}
+		}
+	} else if (dir == 2) {
+		/* Up: swap with previous member in column */
+		if (sel == head)
+			return;
+
+		/* Find the previous tiled member */
+		Client *target = nullptr;
+		Client *iter;
+		wl_list_for_each_reverse(iter, &sel->link, link) {
+			if (&iter->link == &server->clients)
+				break;
+			if (IS_TILED_ON(iter, m)) {
+				target = iter;
+				break;
+			}
+		}
+		if (!target)
+			return;
+
+		/* Remove sel and insert before target */
+		wl_list_remove(&sel->link);
+		wl_list_insert(target->link.prev, &sel->link);
+
+		/* If target was the column head, transfer head properties to sel */
+		if (target == head) {
+			sel->scroller_continuation = false;
+			sel->scroller_cw = target->scroller_cw;
+			sel->scroller_preset_idx = target->scroller_preset_idx;
+			target->scroller_continuation = true;
+		}
+	} else {
+		/* Down: swap with next continuation member in column */
+		Client *target = nullptr;
+		Client *iter;
+		wl_list_for_each(iter, &sel->link, link) {
+			if (&iter->link == &server->clients)
+				break;
+			if (!IS_TILED_ON(iter, m))
+				continue;
+			if (!iter->scroller_continuation)
+				break;
+			target = iter;
+			break;
+		}
+		if (!target)
+			return;
+
+		/* Remove sel and insert after target */
+		wl_list_remove(&sel->link);
+		wl_list_insert(&target->link, &sel->link);
+
+		/* If sel was the column head, transfer head properties to target */
+		if (sel == head) {
+			target->scroller_continuation = false;
+			target->scroller_cw = sel->scroller_cw;
+			target->scroller_preset_idx = sel->scroller_preset_idx;
+			sel->scroller_continuation = true;
+		}
+	}
+
+	swl_arrange(server, m);
+}
+
 /* ===== consume_or_expel command ===== */
 
 void

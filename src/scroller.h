@@ -8,5 +8,6 @@ void swl_cmd_scroller_cycle_width(SwlServer *server, const Arg *arg);
 void swl_cmd_scroller_set_width(SwlServer *server, const Arg *arg);
 void swl_cmd_consume_or_expel(SwlServer *server, const Arg *arg);
 void swl_cmd_focusdir(SwlServer *server, const Arg *arg);
+void swl_cmd_swapdir(SwlServer *server, const Arg *arg);
 
 #endif
