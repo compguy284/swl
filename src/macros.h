@@ -3,8 +3,8 @@
 
 #include "util.h"
 
-#define MAX(A, B) ({ typeof(A) _a = (A); typeof(B) _b = (B); _a > _b ? _a : _b; })
-#define MIN(A, B) ({ typeof(A) _a = (A); typeof(B) _b = (B); _a < _b ? _a : _b; })
+#define MAX(A, B) ((A) > (B) ? (A) : (B))
+#define MIN(A, B) ((A) < (B) ? (A) : (B))
 #define CLEANMASK(mask)         (mask & ~WLR_MODIFIER_CAPS)
 #define VISIBLEON(C, M)         ((M) && (C)->mon == (M))
 #define LENGTH(X)               (sizeof X / sizeof X[0])

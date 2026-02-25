@@ -120,7 +120,12 @@ src = files(
   'src/output.c',
   'src/session.c',
   'src/util.c',
+)
+
+toml_lib = static_library(
+  'toml',
   'src/toml.c',
+  c_args: ['-Wno-unused-macros'],
 )
 
 if xwayland.enabled()
@@ -133,6 +138,7 @@ swl = executable(
   protocol_headers,
   include_directories: include_directories('src'),
   dependencies: deps,
+  link_with: toml_lib,
   install: true,
 )
 
