@@ -10,15 +10,16 @@
 
 #define IS_TILED_ON(c, m) (VISIBLEON(c, m) && !(c)->isfloating && !(c)->isfullscreen)
 
-/* Resolve a client's scroller_cw to pixel width */
+/* Resolve a client's scroller_cw to pixel width.
+ * Fractional widths are relative to the usable space after subtracting gaps. */
 static int
-resolve_width(Client *c, Monitor *m)
+resolve_width(Client *c, Monitor *m, int ncols, int gap)
 {
 	float cw = c->scroller_cw;
 	if (cw <= 0)
 		cw = c->server->config.scroller_default_width;
 	if (cw <= 1.0f)
-		return (int)(cw * m->w.width);
+		return (int)(cw * (m->w.width - (ncols + 1) * gap));
 	return (int)cw;
 }
 
@@ -513,7 +514,7 @@ swl_scroller(SwlServer *server, Monitor *m)
 			col_idx++;
 			col_start[col_idx] = ci;
 			col_count[col_idx] = 1;
-			vw[col_idx] = resolve_width(c, m);
+			vw[col_idx] = resolve_width(c, m, ncols, gap);
 			vx[col_idx] = strip_x;
 			strip_x += vw[col_idx] + gap;
 		} else {
