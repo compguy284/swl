@@ -69,6 +69,7 @@ struct SwlServer {
 	/* Input */
 	struct wlr_seat *seat;
 	KeyboardGroup *kb_group;
+	uint32_t locked_mods;
 
 	/* Cursor state */
 	struct wlr_cursor *cursor;

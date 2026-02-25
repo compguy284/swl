@@ -28,6 +28,10 @@ static void
 createkeyboard(SwlServer *server, struct wlr_keyboard *keyboard)
 {
 	wlr_keyboard_set_keymap(keyboard, server->kb_group->wlr_group->keyboard.keymap);
+
+	if (server->locked_mods)
+		wlr_keyboard_notify_modifiers(keyboard, 0, 0, server->locked_mods, 0);
+
 	wlr_keyboard_group_add_keyboard(server->kb_group->wlr_group, keyboard);
 }
 
@@ -186,10 +190,14 @@ swl_create_keyboard_group(SwlServer *server)
 	if (server->config.numlock) {
 		xkb_mod_index_t mod = xkb_keymap_mod_get_index(
 				group->wlr_group->keyboard.keymap, XKB_MOD_NAME_NUM);
-		if (mod != XKB_MOD_INVALID)
-			wlr_keyboard_notify_modifiers(&group->wlr_group->keyboard,
-					1 << mod, 0, 0, 0);
+		if (mod != XKB_MOD_INVALID) {
+			server->locked_mods |= (uint32_t)1 << mod;
+		}
 	}
+
+	if (server->locked_mods)
+		wlr_keyboard_notify_modifiers(&group->wlr_group->keyboard,
+				0, 0, server->locked_mods, 0);
 
 	LISTEN(&group->wlr_group->keyboard.events.key, &group->key, keypress);
 	LISTEN(&group->wlr_group->keyboard.events.modifiers, &group->modifiers, keypressmod);
