@@ -9,20 +9,25 @@
 #include <wlr/types/wlr_keyboard_group.h>
 #include <wlr/types/wlr_pointer.h>
 #include <wlr/types/wlr_seat.h>
+#include <wlr/types/wlr_switch.h>
 #include <wlr/types/wlr_virtual_keyboard_v1.h>
 #include <wlr/types/wlr_virtual_pointer_v1.h>
 #include <xkbcommon/xkbcommon.h>
 
 #include "input.h"
 #include "macros.h"
+#include "output.h"
 #include "util.h"
 
 static void createkeyboard(SwlServer *server, struct wlr_keyboard *keyboard);
 static void createpointer(SwlServer *server, struct wlr_pointer *pointer);
+static void createswitch(SwlServer *server, struct wlr_switch *switch_device);
 static int keybinding(SwlServer *server, uint32_t mods, xkb_keysym_t sym);
 static void keypress(struct wl_listener *listener, void *data);
 static void keypressmod(struct wl_listener *listener, void *data);
 static int keyrepeat(void *data);
+static void switchdestroy(struct wl_listener *listener, void *data);
+static void switchtoggle(struct wl_listener *listener, void *data);
 
 static void
 createkeyboard(SwlServer *server, struct wlr_keyboard *keyboard)
@@ -67,6 +72,66 @@ createpointer(SwlServer *server, struct wlr_pointer *pointer)
 		}
 	}
 	wlr_cursor_attach_input_device(server->cursor, &pointer->base);
+}
+
+typedef struct {
+	SwlServer *server;
+	struct wl_listener toggle;
+	struct wl_listener destroy;
+} SwlSwitch;
+
+static bool
+is_internal_output(struct wlr_output *output)
+{
+	return strncmp(output->name, "eDP", 3) == 0
+		|| strncmp(output->name, "LVDS", 4) == 0
+		|| strncmp(output->name, "DSI", 3) == 0;
+}
+
+static void
+switchtoggle(struct wl_listener *listener, void *data)
+{
+	SwlSwitch *s = wl_container_of(listener, s, toggle);
+	struct wlr_switch_toggle_event *event = data;
+	Monitor *m;
+
+	if (event->switch_type != WLR_SWITCH_TYPE_LID)
+		return;
+
+	if (event->switch_state == WLR_SWITCH_STATE_ON) {
+		/* Lid closed: disable internal outputs only if an external one is on */
+		int external_enabled = 0;
+		wl_list_for_each(m, &s->server->mons, link)
+			if (!is_internal_output(m->wlr_output) && !m->asleep)
+				external_enabled++;
+		if (external_enabled > 0)
+			wl_list_for_each(m, &s->server->mons, link)
+				if (is_internal_output(m->wlr_output) && !m->asleep)
+					swl_output_set_power(s->server, m, false);
+	} else {
+		/* Lid opened: re-enable internal outputs */
+		wl_list_for_each(m, &s->server->mons, link)
+			if (is_internal_output(m->wlr_output) && m->asleep)
+				swl_output_set_power(s->server, m, true);
+	}
+}
+
+static void
+switchdestroy(struct wl_listener *listener, void *data)
+{
+	SwlSwitch *s = wl_container_of(listener, s, destroy);
+	wl_list_remove(&s->toggle.link);
+	wl_list_remove(&s->destroy.link);
+	free(s);
+}
+
+static void
+createswitch(SwlServer *server, struct wlr_switch *switch_device)
+{
+	SwlSwitch *s = calloc(1, sizeof(*s));
+	s->server = server;
+	LISTEN(&switch_device->events.toggle, &s->toggle, switchtoggle);
+	LISTEN(&switch_device->base.events.destroy, &s->destroy, switchdestroy);
 }
 
 static int
@@ -223,6 +288,9 @@ swl_handle_new_input(struct wl_listener *listener, void *data)
 		break;
 	case WLR_INPUT_DEVICE_POINTER:
 		createpointer(server, wlr_pointer_from_input_device(device));
+		break;
+	case WLR_INPUT_DEVICE_SWITCH:
+		createswitch(server, wlr_switch_from_input_device(device));
 		break;
 	default:
 		break;

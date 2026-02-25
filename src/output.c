@@ -239,22 +239,27 @@ swl_handle_output_mgr_test(struct wl_listener *listener, void *data)
 }
 
 void
+swl_output_set_power(SwlServer *server, Monitor *m, bool enabled)
+{
+	struct wlr_output_state state = {0};
+	m->gamma_lut_changed = true; /* Reapply gamma LUT when re-enabling the output */
+	wlr_output_state_set_enabled(&state, enabled);
+	wlr_output_commit_state(m->wlr_output, &state);
+	m->asleep = !enabled;
+	swl_handle_layout_change(&server->layout_change, nullptr);
+}
+
+void
 swl_handle_output_power_set_mode(struct wl_listener *listener, void *data)
 {
 	SwlServer *server = wl_container_of(listener, server, output_power_mgr_set_mode);
 	struct wlr_output_power_v1_set_mode_event *event = data;
-	struct wlr_output_state state = {0};
 	Monitor *m = event->output->data;
 
 	if (!m)
 		return;
 
-	m->gamma_lut_changed = true; /* Reapply gamma LUT when re-enabling the output */
-	wlr_output_state_set_enabled(&state, event->mode);
-	wlr_output_commit_state(m->wlr_output, &state);
-
-	m->asleep = !event->mode;
-	swl_handle_layout_change(&server->layout_change, nullptr);
+	swl_output_set_power(server, m, event->mode);
 }
 
 void
