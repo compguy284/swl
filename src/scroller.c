@@ -555,16 +555,22 @@ swl_scroller(SwlServer *server, Monitor *m)
 	case ScrollCenterAlways:
 		m->scroll_x = focused_center - viewport_center;
 		break;
-	case ScrollCenterOverflow:
-		if (focused_vw > m->w.width) {
-			m->scroll_x = focused_center - viewport_center;
-		} else {
+	case ScrollCenterOverflow: {
+		/* Center if both the old and new focused columns can't fit on screen together */
+		int span_left = MIN(focused_vx, m->prev_focus_vx);
+		int span_right = MAX(focused_vx + focused_vw, m->prev_focus_vx + m->prev_focus_vw);
+		bool fits = (span_right - span_left + 2 * gap) <= m->w.width;
+
+		if (fits) {
 			if (focused_vx - gap - m->scroll_x < m->w.x)
 				m->scroll_x = focused_vx - gap - m->w.x;
 			else if (focused_vx + focused_vw + gap - m->scroll_x > m->w.x + m->w.width)
 				m->scroll_x = focused_vx + focused_vw + gap - m->w.x - m->w.width;
+		} else {
+			m->scroll_x = focused_center - viewport_center;
 		}
 		break;
+	}
 	case ScrollCenterNever:
 	default:
 		if (focused_vx - gap - m->scroll_x < m->w.x)
@@ -573,6 +579,9 @@ swl_scroller(SwlServer *server, Monitor *m)
 			m->scroll_x = focused_vx + focused_vw + gap - m->w.x - m->w.width;
 		break;
 	}
+
+	m->prev_focus_vx = focused_vx;
+	m->prev_focus_vw = focused_vw;
 
 position:
 	/* Position and clip each client */

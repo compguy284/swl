@@ -146,6 +146,7 @@ struct Monitor {
 	struct wl_list layers[4]; /* LayerSurface.link */
 	bool gamma_lut_changed;
 	int scroll_x;              /* horizontal viewport offset for scroller layout */
+	int prev_focus_vx, prev_focus_vw; /* previous focused column virtual pos/width */
 	bool asleep;
 };
 
