@@ -221,6 +221,7 @@ swl_server_setup(SwlServer *server)
 			wlr_server_decoration_manager_create(server->dpy),
 			WLR_SERVER_DECORATION_MANAGER_MODE_SERVER);
 	server->xdg_decoration_mgr = wlr_xdg_decoration_manager_v1_create(server->dpy);
+	server->foreign_toplevel_mgr = wlr_foreign_toplevel_manager_v1_create(server->dpy);
 
 	/* Wire up xdg-shell, xdg-decoration, and activation listeners (in commands module) */
 	swl_commands_setup_listeners(server);

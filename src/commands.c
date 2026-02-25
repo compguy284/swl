@@ -13,6 +13,7 @@
 #include <scenefx/types/wlr_scene.h>
 #include <wlr/types/wlr_seat.h>
 #include <wlr/types/wlr_xcursor_manager.h>
+#include <wlr/types/wlr_foreign_toplevel_management_v1.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
 #include <wlr/types/wlr_xdg_shell.h>
 
@@ -239,6 +240,8 @@ swl_focusclient(SwlServer *server, Client *c, int lift)
 				&& (!c || !swl_client_wants_focus(c))) {
 			swl_client_set_border_color(old_c, server->config.bordercolor);
 			swl_client_activate_surface(old, 0);
+			if (old_c->foreign_toplevel)
+				wlr_foreign_toplevel_handle_v1_set_activated(old_c->foreign_toplevel, 0);
 		}
 	}
 
@@ -253,6 +256,8 @@ swl_focusclient(SwlServer *server, Client *c, int lift)
 	swl_client_notify_enter(server->seat, swl_client_surface(c),
 			wlr_seat_get_keyboard(server->seat));
 	swl_client_activate_surface(swl_client_surface(c), 1);
+	if (c->foreign_toplevel)
+		wlr_foreign_toplevel_handle_v1_set_activated(c->foreign_toplevel, 1);
 }
 
 Client *
@@ -276,6 +281,13 @@ swl_setmon(SwlServer *server, Client *c, Monitor *m)
 	c->mon = m;
 	c->scroller_continuation = false;
 	c->prev = c->geom;
+
+	if (c->foreign_toplevel) {
+		if (oldmon)
+			wlr_foreign_toplevel_handle_v1_output_leave(c->foreign_toplevel, oldmon->wlr_output);
+		if (m)
+			wlr_foreign_toplevel_handle_v1_output_enter(c->foreign_toplevel, m->wlr_output);
+	}
 
 	if (oldmon)
 		swl_arrange(server, oldmon);
@@ -312,6 +324,8 @@ void
 swl_setfullscreen(SwlServer *server, Client *c, int fullscreen)
 {
 	c->isfullscreen = fullscreen;
+	if (c->foreign_toplevel)
+		wlr_foreign_toplevel_handle_v1_set_fullscreen(c->foreign_toplevel, fullscreen);
 	if (!c->mon || !swl_client_surface(c)->mapped)
 		return;
 	c->bw = fullscreen ? 0 : server->config.borderpx;
@@ -497,6 +511,69 @@ commitpopup(struct wl_listener *listener, void *data)
 	free(listener);
 }
 
+static void
+factivatenotify(struct wl_listener *listener, void *data)
+{
+	Client *c = wl_container_of(listener, c, factivate);
+	struct wlr_foreign_toplevel_handle_v1_activated_event *event = data;
+	SwlServer *server = c->server;
+	(void)event;
+	swl_focusclient(server, c, 1);
+	swl_arrange(server, c->mon);
+}
+
+static void
+fclosenotify(struct wl_listener *listener, void *data)
+{
+	Client *c = wl_container_of(listener, c, fclose);
+	swl_client_send_close(c);
+}
+
+static void
+ffullscreennotify(struct wl_listener *listener, void *data)
+{
+	Client *c = wl_container_of(listener, c, ffullscreen);
+	struct wlr_foreign_toplevel_handle_v1_fullscreen_event *event = data;
+	swl_setfullscreen(c->server, c, event->fullscreen);
+}
+
+static void
+fdestroynotify(struct wl_listener *listener, void *data)
+{
+	Client *c = wl_container_of(listener, c, fdestroy);
+	wl_list_remove(&c->factivate.link);
+	wl_list_remove(&c->fclose.link);
+	wl_list_remove(&c->ffullscreen.link);
+	wl_list_remove(&c->fdestroy.link);
+	c->foreign_toplevel = nullptr;
+}
+
+static void
+createforeigntoplevel(Client *c)
+{
+	SwlServer *server = c->server;
+	struct wlr_foreign_toplevel_handle_v1 *handle;
+
+	handle = wlr_foreign_toplevel_handle_v1_create(server->foreign_toplevel_mgr);
+	if (!handle)
+		return;
+	c->foreign_toplevel = handle;
+
+	const char *appid = swl_client_get_appid(c);
+	const char *title = swl_client_get_title(c);
+	if (appid)
+		wlr_foreign_toplevel_handle_v1_set_app_id(handle, appid);
+	if (title)
+		wlr_foreign_toplevel_handle_v1_set_title(handle, title);
+	if (c->mon)
+		wlr_foreign_toplevel_handle_v1_output_enter(handle, c->mon->wlr_output);
+
+	LISTEN(&handle->events.request_activate, &c->factivate, factivatenotify);
+	LISTEN(&handle->events.request_close, &c->fclose, fclosenotify);
+	LISTEN(&handle->events.request_fullscreen, &c->ffullscreen, ffullscreennotify);
+	LISTEN(&handle->events.destroy, &c->fdestroy, fdestroynotify);
+}
+
 void
 swl_handle_map(struct wl_listener *listener, void *data)
 {
@@ -583,6 +660,9 @@ swl_handle_map(struct wl_listener *listener, void *data)
 		swl_applyrules(server, c);
 	}
 
+	if (!swl_client_is_unmanaged(c))
+		createforeigntoplevel(c);
+
 	swl_printstatus(server);
 
 unset_fullscreen:
@@ -641,6 +721,9 @@ swl_handle_unmap(struct wl_listener *listener, void *data)
 		wl_list_remove(&c->flink);
 	}
 
+	if (c->foreign_toplevel)
+		wlr_foreign_toplevel_handle_v1_destroy(c->foreign_toplevel);
+
 	wlr_scene_node_destroy(&c->scene->node);
 	swl_printstatus(server);
 	swl_motionnotify(server, 0, nullptr, 0, 0, 0, 0);
@@ -682,6 +765,11 @@ void
 swl_handle_update_title(struct wl_listener *listener, void *data)
 {
 	Client *c = wl_container_of(listener, c, set_title);
+	if (c->foreign_toplevel) {
+		const char *title = swl_client_get_title(c);
+		if (title)
+			wlr_foreign_toplevel_handle_v1_set_title(c->foreign_toplevel, title);
+	}
 	if (c == swl_focustop(c->server, c->mon))
 		swl_printstatus(c->server);
 }

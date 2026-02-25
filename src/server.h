@@ -23,6 +23,7 @@
 #include <wlr/types/wlr_virtual_pointer_v1.h>
 #include <wlr/types/wlr_xcursor_manager.h>
 #include <wlr/types/wlr_xdg_activation_v1.h>
+#include <wlr/types/wlr_foreign_toplevel_management_v1.h>
 #include <wlr/types/wlr_xdg_decoration_v1.h>
 #include <wlr/types/wlr_xdg_shell.h>
 #ifdef XWAYLAND
@@ -65,6 +66,7 @@ struct SwlServer {
 	struct wlr_session_lock_manager_v1 *session_lock_mgr;
 	struct wlr_pointer_constraints_v1 *pointer_constraints;
 	struct wlr_relative_pointer_manager_v1 *relative_pointer_mgr;
+	struct wlr_foreign_toplevel_manager_v1 *foreign_toplevel_mgr;
 
 	/* Input */
 	struct wlr_seat *seat;

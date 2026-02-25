@@ -73,6 +73,11 @@ typedef struct {
 	struct wl_listener fullscreen;
 	struct wl_listener set_decoration_mode;
 	struct wl_listener destroy_decoration;
+	struct wlr_foreign_toplevel_handle_v1 *foreign_toplevel;
+	struct wl_listener factivate;
+	struct wl_listener fclose;
+	struct wl_listener ffullscreen;
+	struct wl_listener fdestroy;
 #ifdef XWAYLAND
 	struct wl_listener activate;
 	struct wl_listener associate;
