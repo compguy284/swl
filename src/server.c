@@ -335,7 +335,7 @@ set_session_env(void)
 		setsid();
 		execlp("dbus-update-activation-environment",
 		       "dbus-update-activation-environment", "--systemd",
-		       "WAYLAND_DISPLAY", "DISPLAY", "XDG_CURRENT_DESKTOP",
+		       "WAYLAND_DISPLAY", "DISPLAY", "XDG_CURRENT_DESKTOP", "PATH",
 		       (char *)NULL);
 		_exit(1);
 	}
