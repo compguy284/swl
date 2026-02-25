@@ -665,18 +665,23 @@ swl_cmd_scroller_cycle_width(SwlServer *server, const Arg *arg)
 	c = find_column_head(server, c, server->selmon);
 
 	SwlConfig *cfg = &server->config;
-	if (cfg->scroller_preset_count == 0)
+	int n = (int)cfg->scroller_preset_count;
+	if (n == 0)
 		return;
 
 	int dir = (arg && arg->i != 0) ? arg->i : 1;
-	int idx = c->scroller_preset_idx;
 
-	if (dir > 0) {
-		idx = (idx + 1) % (int)cfg->scroller_preset_count;
-	} else {
-		idx = (idx - 1 + (int)cfg->scroller_preset_count) % (int)cfg->scroller_preset_count;
+	/* Find the preset matching the current effective width */
+	float cur = c->scroller_cw > 0 ? c->scroller_cw : cfg->scroller_default_width;
+	int idx = 0;
+	for (int i = 0; i < n; i++) {
+		if (cfg->scroller_preset_widths[i] == cur) {
+			idx = i;
+			break;
+		}
 	}
 
+	idx = (idx + dir % n + n) % n;
 	c->scroller_preset_idx = idx;
 	c->scroller_cw = cfg->scroller_preset_widths[idx];
 	swl_arrange(server, server->selmon);
