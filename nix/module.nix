@@ -70,8 +70,6 @@ in
       text = ''
         #!/bin/sh
         ${cfg.extraSessionCommands}
-        systemctl --user import-environment DISPLAY WAYLAND_DISPLAY
-        systemctl --user start swl-session.target
         exec ${lib.getExe cfg.package}${lib.optionalString (cfg.configFile != null) " -c ${cfg.configFile}"}
       '';
     };

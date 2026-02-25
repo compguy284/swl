@@ -325,6 +325,48 @@ swl_server_setup(SwlServer *server)
 #endif
 }
 
+static void
+set_session_env(void)
+{
+	setenv("XDG_CURRENT_DESKTOP", "swl", 0);
+	pid_t pid = fork();
+	if (pid == 0) {
+		setsid();
+		execlp("dbus-update-activation-environment",
+		       "dbus-update-activation-environment", "--systemd",
+		       "WAYLAND_DISPLAY", "DISPLAY", "XDG_CURRENT_DESKTOP",
+		       (char *)NULL);
+		_exit(1);
+	}
+	if (pid > 0)
+		waitpid(pid, NULL, 0);
+}
+
+static void
+start_session_target(void)
+{
+	pid_t pid = fork();
+	if (pid == 0) {
+		setsid();
+		execlp("systemctl", "systemctl", "--user", "start",
+		       "--no-block", "swl-session.target", (char *)NULL);
+		_exit(1);
+	}
+}
+
+static void
+stop_session_target(void)
+{
+	pid_t pid = fork();
+	if (pid == 0) {
+		execlp("systemctl", "systemctl", "--user", "stop",
+		       "swl-session.target", (char *)NULL);
+		_exit(1);
+	}
+	if (pid > 0)
+		waitpid(pid, NULL, 0);
+}
+
 void
 swl_server_run(SwlServer *server, char *startup_cmd)
 {
@@ -338,6 +380,10 @@ swl_server_run(SwlServer *server, char *startup_cmd)
 	 * master, etc */
 	if (!wlr_backend_start(server->backend))
 		die("startup: backend_start");
+
+	/* Export session env to D-Bus/systemd and start session target */
+	set_session_env();
+	start_session_target();
 
 	/* Now that the socket exists and the backend is started, run the startup command */
 	if (startup_cmd) {
@@ -425,6 +471,7 @@ cleanuplisteners(SwlServer *server)
 void
 swl_server_cleanup(SwlServer *server)
 {
+	stop_session_target();
 	cleanuplisteners(server);
 #ifdef XWAYLAND
 	wlr_xwayland_destroy(server->xwayland);
