@@ -11,6 +11,7 @@ typedef struct SwlConfig {
 	/* Appearance */
 	bool sloppyfocus;
 	bool bypass_surface_visibility;
+	char **lid_close_cmd; /* NULL-terminated argv, or nullptr */
 	unsigned int borderpx;
 	float rootcolor[4];
 	float bordercolor[4];

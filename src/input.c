@@ -1,5 +1,6 @@
 #include <libinput.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <wayland-server-core.h>
 #include <wlr/backend/libinput.h>
 #include <wlr/types/wlr_cursor.h>
@@ -108,6 +109,14 @@ switchtoggle(struct wl_listener *listener, void *data)
 			wl_list_for_each(m, &s->server->mons, link)
 				if (is_internal_output(m->wlr_output) && !m->asleep)
 					swl_output_set_power(s->server, m, false);
+
+		char **cmd = s->server->config.lid_close_cmd;
+		if (cmd && cmd[0] && fork() == 0) {
+			dup2(STDERR_FILENO, STDOUT_FILENO);
+			setsid();
+			execvp(cmd[0], cmd);
+			die("swl: execvp %s failed:", cmd[0]);
+		}
 	} else {
 		/* Lid opened: re-enable internal outputs */
 		wl_list_for_each(m, &s->server->mons, link)

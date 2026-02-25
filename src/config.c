@@ -74,6 +74,7 @@ swl_config_defaults(SwlConfig *config)
 	/* Appearance */
 	config->sloppyfocus = true;
 	config->bypass_surface_visibility = false;
+	config->lid_close_cmd = nullptr;
 	config->borderpx = 1;
 	static constexpr float rc[] = COLOR(0x222222ff);
 	static constexpr float bc[] = COLOR(0x444444ff);
@@ -379,6 +380,18 @@ parse_general(toml_table_t *tab, SwlConfig *config)
 
 	d = toml_bool_in(tab, "bypass_surface_visibility");
 	if (d.ok) config->bypass_surface_visibility = d.u.b;
+
+	toml_array_t *arr = toml_array_in(tab, "lid_close_cmd");
+	if (arr) {
+		int n = toml_array_nelem(arr);
+		config->lid_close_cmd = calloc((size_t)(n + 1), sizeof(char *));
+		for (int i = 0; i < n; i++) {
+			toml_datum_t s = toml_string_at(arr, i);
+			config->lid_close_cmd[i] = s.ok ? strdup(s.u.s) : strdup("");
+			if (s.ok) free(s.u.s);
+		}
+		config->lid_close_cmd[n] = nullptr;
+	}
 }
 
 static void

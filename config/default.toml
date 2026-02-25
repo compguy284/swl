@@ -5,6 +5,7 @@
 [general]
 sloppy_focus = true
 bypass_surface_visibility = false
+# lid_close_cmd = ["swaylock", "-f"]
 
 [appearance]
 border_width = 1
