@@ -559,18 +559,18 @@ swl_scroller(SwlServer *server, Monitor *m)
 		if (focused_vw > m->w.width) {
 			m->scroll_x = focused_center - viewport_center;
 		} else {
-			if (focused_vx - m->scroll_x < m->w.x)
-				m->scroll_x = focused_vx - m->w.x;
-			else if (focused_vx + focused_vw - m->scroll_x > m->w.x + m->w.width)
-				m->scroll_x = focused_vx + focused_vw - m->w.x - m->w.width;
+			if (focused_vx - gap - m->scroll_x < m->w.x)
+				m->scroll_x = focused_vx - gap - m->w.x;
+			else if (focused_vx + focused_vw + gap - m->scroll_x > m->w.x + m->w.width)
+				m->scroll_x = focused_vx + focused_vw + gap - m->w.x - m->w.width;
 		}
 		break;
 	case ScrollCenterNever:
 	default:
-		if (focused_vx - m->scroll_x < m->w.x)
-			m->scroll_x = focused_vx - m->w.x;
-		else if (focused_vx + focused_vw - m->scroll_x > m->w.x + m->w.width)
-			m->scroll_x = focused_vx + focused_vw - m->w.x - m->w.width;
+		if (focused_vx - gap - m->scroll_x < m->w.x)
+			m->scroll_x = focused_vx - gap - m->w.x;
+		else if (focused_vx + focused_vw + gap - m->scroll_x > m->w.x + m->w.width)
+			m->scroll_x = focused_vx + focused_vw + gap - m->w.x - m->w.width;
 		break;
 	}
 
