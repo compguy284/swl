@@ -227,6 +227,67 @@ action = "quit"
 # Note: CHVT bindings (Ctrl+Alt+F1-F12) and Ctrl+Alt+Backspace -> quit
 # are auto-generated.
 
+# Special keys (volume, brightness, media) — uncomment and adjust commands:
+#
+# [[bind.key]]
+# mods = []
+# key = "XF86AudioRaiseVolume"
+# action = "spawn"
+# arg = "volume_up"
+#
+# [[bind.key]]
+# mods = []
+# key = "XF86AudioLowerVolume"
+# action = "spawn"
+# arg = "volume_down"
+#
+# [[bind.key]]
+# mods = []
+# key = "XF86AudioMute"
+# action = "spawn"
+# arg = "volume_mute"
+#
+# [[bind.key]]
+# mods = []
+# key = "XF86MonBrightnessUp"
+# action = "spawn"
+# arg = "brightness_up"
+#
+# [[bind.key]]
+# mods = []
+# key = "XF86MonBrightnessDown"
+# action = "spawn"
+# arg = "brightness_down"
+#
+# [[bind.key]]
+# mods = []
+# key = "XF86AudioPlay"
+# action = "spawn"
+# arg = "media_play"
+#
+# [[bind.key]]
+# mods = []
+# key = "XF86AudioNext"
+# action = "spawn"
+# arg = "media_next"
+#
+# [[bind.key]]
+# mods = []
+# key = "XF86AudioPrev"
+# action = "spawn"
+# arg = "media_prev"
+#
+# Define the commands above in [commands], e.g.:
+# [commands]
+# volume_up = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%+"]
+# volume_down = ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-"]
+# volume_mute = ["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"]
+# brightness_up = ["brightnessctl", "set", "5%+"]
+# brightness_down = ["brightnessctl", "set", "5%-"]
+# media_play = ["playerctl", "play-pause"]
+# media_next = ["playerctl", "next"]
+# media_prev = ["playerctl", "previous"]
+
 # Mouse bindings
 [[bind.mouse]]
 mods = ["mod"]
