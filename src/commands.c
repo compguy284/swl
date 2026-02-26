@@ -790,3 +790,66 @@ urgent(struct wl_listener *listener, void *data)
 	if (swl_client_surface(c)->mapped)
 		swl_client_set_border_color(c, server->config.urgentcolor);
 }
+
+void
+swl_reapply_client_config(SwlServer *server)
+{
+	Client *c;
+	wl_list_for_each(c, &server->clients, link) {
+		if (swl_client_is_unmanaged(c))
+			continue;
+
+		/* Update border width */
+		c->bw = c->isfullscreen ? 0 : server->config.borderpx;
+
+		/* Update border corner radius */
+		if (c->border && server->config.corner_radius > 0)
+			wlr_scene_rect_set_corner_radius(c->border,
+					server->config.corner_radius);
+		else if (c->border)
+			wlr_scene_rect_set_corner_radius(c->border, 0);
+
+		/* Handle shadow enable/disable toggle */
+		if (server->config.shadow_enabled && !c->shadow && c->border) {
+			c->shadow = wlr_scene_shadow_create(c->scene,
+					c->geom.width, c->geom.height,
+					server->config.corner_radius,
+					server->config.shadow_sigma,
+					server->config.shadow_color);
+			wlr_scene_node_place_below(&c->shadow->node,
+					&c->border->node);
+			if (c->isfullscreen)
+				wlr_scene_node_set_enabled(&c->shadow->node, false);
+		} else if (!server->config.shadow_enabled && c->shadow) {
+			wlr_scene_node_destroy(&c->shadow->node);
+			c->shadow = nullptr;
+		} else if (server->config.shadow_enabled && c->shadow) {
+			/* Update existing shadow properties */
+			wlr_scene_shadow_set_corner_radius(c->shadow,
+					server->config.corner_radius);
+			wlr_scene_shadow_set_blur_sigma(c->shadow,
+					server->config.shadow_sigma);
+			wlr_scene_shadow_set_color(c->shadow,
+					server->config.shadow_color);
+		}
+
+		/* Resize to apply new border width and corner radius */
+		swl_resize(server, c, c->geom, 0);
+	}
+
+	/* Re-color focused client per monitor */
+	Monitor *m;
+	wl_list_for_each(m, &server->mons, link) {
+		Client *focused = swl_focustop(server, m);
+		wl_list_for_each(c, &server->clients, link) {
+			if (c->mon != m || swl_client_is_unmanaged(c))
+				continue;
+			if (c == focused)
+				swl_client_set_border_color(c, server->config.focuscolor);
+			else if (c->isurgent)
+				swl_client_set_border_color(c, server->config.urgentcolor);
+			else
+				swl_client_set_border_color(c, server->config.bordercolor);
+		}
+	}
+}

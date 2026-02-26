@@ -63,6 +63,7 @@ struct wlr_renderer *fx_renderer_create(struct wlr_backend *backend);
 #include "idle.h"
 #include "input.h"
 #include "layer.h"
+#include "layout.h"
 #include "macros.h"
 #include "output.h"
 #include "session.h"
@@ -70,6 +71,52 @@ struct wlr_renderer *fx_renderer_create(struct wlr_backend *backend);
 #ifdef XWAYLAND
 #include "xwayland.h"
 #endif
+
+static int
+handle_sighup(int signo, void *data)
+{
+	SwlServer *server = data;
+	swl_cmd_reload_config(server, nullptr);
+	return 0;
+}
+
+void
+swl_apply_config_runtime(SwlServer *server)
+{
+	/* Log level */
+	wlr_log_init(server->config.log_level, nullptr);
+
+	/* Root background color */
+	wlr_scene_rect_set_color(server->root_bg, server->config.rootcolor);
+
+	/* Blur settings */
+	if (server->config.blur_enabled)
+		wlr_scene_set_blur_data(server->scene,
+				server->config.blur_num_passes,
+				server->config.blur_radius,
+				server->config.blur_noise,
+				server->config.blur_brightness,
+				server->config.blur_contrast,
+				server->config.blur_saturation);
+
+	/* Keyboard config */
+	swl_reapply_keyboard_config(server);
+
+	/* Pointer/trackpad config */
+	swl_reapply_pointer_config(server);
+
+	/* Update fullscreen_bg color on all monitors */
+	Monitor *m;
+	wl_list_for_each(m, &server->mons, link)
+		wlr_scene_rect_set_color(m->fullscreen_bg, server->config.fullscreen_bg);
+
+	/* Client borders, shadows, corner radius */
+	swl_reapply_client_config(server);
+
+	/* Re-arrange all monitors */
+	wl_list_for_each(m, &server->mons, link)
+		swl_arrange(server, m);
+}
 
 void
 swl_server_setup(SwlServer *server)
@@ -89,6 +136,9 @@ swl_server_setup(SwlServer *server)
 	 * clients from the Unix socket, managing Wayland globals, and so on. */
 	server->dpy = wl_display_create();
 	server->event_loop = wl_display_get_event_loop(server->dpy);
+
+	/* SIGHUP triggers config reload via the event loop (safe, not a raw signal handler) */
+	wl_event_loop_add_signal(server->event_loop, SIGHUP, handle_sighup, server);
 
 	/* The backend is a wlroots feature which abstracts the underlying input and
 	 * output hardware. The autocreate option will choose the most suitable
@@ -195,6 +245,7 @@ swl_server_setup(SwlServer *server)
 	/* Set up our client lists, the xdg-shell and the layer-shell. */
 	wl_list_init(&server->clients);
 	wl_list_init(&server->fstack);
+	wl_list_init(&server->pointers);
 
 	server->xdg_shell = wlr_xdg_shell_create(server->dpy, 6);
 
@@ -506,4 +557,7 @@ swl_server_cleanup(SwlServer *server)
 	/* Destroy after the wayland display (when the monitors are already destroyed)
 	   to avoid destroying them with an invalid scene output. */
 	wlr_scene_node_destroy(&server->scene->tree.node);
+
+	swl_config_free(&server->config);
+	free(server->config_path);
 }

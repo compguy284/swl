@@ -221,6 +221,11 @@ arg = "down"
 
 [[bind.key]]
 mods = ["mod", "shift"]
+key = "r"
+action = "reload_config"
+
+[[bind.key]]
+mods = ["mod", "shift"]
 key = "q"
 action = "quit"
 

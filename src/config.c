@@ -55,12 +55,15 @@ static const Key default_keys[] = {
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_less,        swl_cmd_tagmon,         {.i = WLR_DIRECTION_LEFT} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_greater,     swl_cmd_tagmon,         {.i = WLR_DIRECTION_RIGHT} },
 	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_q,           swl_cmd_quit,           {0} },
+	{ MODKEY|WLR_MODIFIER_SHIFT, XKB_KEY_r,           swl_cmd_reload_config,  {0} },
 
 	/* Ctrl-Alt-Backspace and Ctrl-Alt-Fx used to be handled by X server */
 	{ WLR_MODIFIER_CTRL|WLR_MODIFIER_ALT,XKB_KEY_Terminate_Server, swl_cmd_quit, {0} },
 	CHVT(1), CHVT(2), CHVT(3), CHVT(4), CHVT(5), CHVT(6),
 	CHVT(7), CHVT(8), CHVT(9), CHVT(10), CHVT(11), CHVT(12),
 };
+
+static float default_presets[] = { 0.5f, 0.67f, 1.0f };
 
 static const Button default_buttons[] = {
 	{ MODKEY, BTN_LEFT,   swl_cmd_moveresize,     {.ui = CurMove} },
@@ -133,7 +136,6 @@ swl_config_defaults(SwlConfig *config)
 
 	/* Scroller layout */
 	config->scroller_default_width = 0.5f;
-	static float default_presets[] = { 0.5f, 0.67f, 1.0f };
 	config->scroller_preset_widths = default_presets;
 	config->scroller_preset_count = LENGTH(default_presets);
 	config->scroller_center = ScrollCenterNever;
@@ -203,6 +205,7 @@ static const struct { const char *name; SwlCmdFunc func; } action_funcs[] = {
 	{ "consume_or_expel", swl_cmd_consume_or_expel },
 	{ "focusdir",         swl_cmd_focusdir },
 	{ "swapdir",          swl_cmd_swapdir },
+	{ "reload_config",    swl_cmd_reload_config },
 };
 
 static const struct { const char *name; uint32_t mod; } mod_names[] = {
@@ -228,6 +231,22 @@ typedef struct {
 
 static NamedCommand *named_cmds = nullptr;
 static size_t named_cmds_count = 0;
+
+static void
+free_named_cmds(void)
+{
+	for (size_t i = 0; i < named_cmds_count; i++) {
+		free(named_cmds[i].name);
+		if (named_cmds[i].argv) {
+			for (char **p = named_cmds[i].argv; *p; p++)
+				free(*p);
+			free(named_cmds[i].argv);
+		}
+	}
+	free(named_cmds);
+	named_cmds = nullptr;
+	named_cmds_count = 0;
+}
 
 static char **
 find_command(const char *name)
@@ -947,8 +966,7 @@ swl_config_load(SwlConfig *config, const char *path)
 	}
 
 	/* Reset file-scope state for commands */
-	named_cmds = nullptr;
-	named_cmds_count = 0;
+	free_named_cmds();
 	modkey_value = WLR_MODIFIER_ALT;
 
 	/* [general] */
@@ -1010,4 +1028,78 @@ swl_config_load(SwlConfig *config, const char *path)
 
 	toml_free(root);
 	return 0;
+}
+
+void
+swl_config_free(SwlConfig *config)
+{
+	/* Key bindings */
+	if (config->keys != default_keys)
+		free((void *)config->keys);
+
+	/* Mouse bindings */
+	if (config->buttons != default_buttons)
+		free((void *)config->buttons);
+
+	/* Rules */
+	if (config->rules != default_rules) {
+		for (size_t i = 0; i < config->rules_count; i++) {
+			free((void *)config->rules[i].id);
+			free((void *)config->rules[i].title);
+		}
+		free((void *)config->rules);
+	}
+
+	/* Monitor rules */
+	if (config->monrules != default_monrules) {
+		for (size_t i = 0; i < config->monrules_count; i++)
+			free((void *)config->monrules[i].name);
+		free((void *)config->monrules);
+	}
+
+	/* Scroller preset widths */
+	if (config->scroller_preset_widths != default_presets)
+		free(config->scroller_preset_widths);
+
+	/* XKB rule name strings (strdup'd by parse_keyboard) */
+	free((void *)config->xkb_rules.rules);
+	free((void *)config->xkb_rules.model);
+	free((void *)config->xkb_rules.layout);
+	free((void *)config->xkb_rules.variant);
+	free((void *)config->xkb_rules.options);
+
+	/* lid_close_cmd */
+	if (config->lid_close_cmd) {
+		for (char **p = config->lid_close_cmd; *p; p++)
+			free(*p);
+		free(config->lid_close_cmd);
+	}
+}
+
+void
+swl_cmd_reload_config(SwlServer *server, const Arg *arg)
+{
+	(void)arg;
+
+	if (!server->config_path) {
+		wlr_log(WLR_INFO, "reload_config: no config path, skipping");
+		return;
+	}
+
+	SwlConfig newcfg = {0};
+	swl_config_defaults(&newcfg);
+
+	if (swl_config_load(&newcfg, server->config_path) < 0) {
+		wlr_log(WLR_ERROR, "reload_config: failed to parse '%s', keeping current config",
+				server->config_path);
+		swl_config_free(&newcfg);
+		return;
+	}
+
+	swl_config_free(&server->config);
+	server->config = newcfg;
+	swl_apply_config_runtime(server);
+
+	wlr_log(WLR_INFO, "reload_config: configuration reloaded from '%s'",
+			server->config_path);
 }

@@ -20,6 +20,7 @@
 #include "output.h"
 #include "util.h"
 
+static void apply_libinput_settings(SwlServer *server, struct wlr_pointer *pointer);
 static void createkeyboard(SwlServer *server, struct wlr_keyboard *keyboard);
 static void createpointer(SwlServer *server, struct wlr_pointer *pointer);
 static void createswitch(SwlServer *server, struct wlr_switch *switch_device);
@@ -27,8 +28,15 @@ static int keybinding(SwlServer *server, uint32_t mods, xkb_keysym_t sym);
 static void keypress(struct wl_listener *listener, void *data);
 static void keypressmod(struct wl_listener *listener, void *data);
 static int keyrepeat(void *data);
+static void pointerdestroy(struct wl_listener *listener, void *data);
 static void switchdestroy(struct wl_listener *listener, void *data);
 static void switchtoggle(struct wl_listener *listener, void *data);
+
+typedef struct {
+	struct wl_list link;
+	struct wlr_pointer *pointer;
+	struct wl_listener destroy;
+} SwlPointer;
 
 static void
 createkeyboard(SwlServer *server, struct wlr_keyboard *keyboard)
@@ -42,7 +50,7 @@ createkeyboard(SwlServer *server, struct wlr_keyboard *keyboard)
 }
 
 static void
-createpointer(SwlServer *server, struct wlr_pointer *pointer)
+apply_libinput_settings(SwlServer *server, struct wlr_pointer *pointer)
 {
 	struct libinput_device *device;
 	if (wlr_input_device_is_libinput(&pointer->base)
@@ -72,6 +80,27 @@ createpointer(SwlServer *server, struct wlr_pointer *pointer)
 			libinput_device_config_accel_set_speed(device, server->config.accel_speed);
 		}
 	}
+}
+
+static void
+pointerdestroy(struct wl_listener *listener, void *data)
+{
+	SwlPointer *p = wl_container_of(listener, p, destroy);
+	wl_list_remove(&p->link);
+	wl_list_remove(&p->destroy.link);
+	free(p);
+}
+
+static void
+createpointer(SwlServer *server, struct wlr_pointer *pointer)
+{
+	apply_libinput_settings(server, pointer);
+
+	SwlPointer *p = calloc(1, sizeof(*p));
+	p->pointer = pointer;
+	wl_list_insert(&server->pointers, &p->link);
+	LISTEN(&pointer->base.events.destroy, &p->destroy, pointerdestroy);
+
 	wlr_cursor_attach_input_device(server->cursor, &pointer->base);
 }
 
@@ -334,4 +363,44 @@ swl_handle_new_virtual_pointer(struct wl_listener *listener, void *data)
 	if (event->suggested_output)
 		wlr_cursor_map_input_to_output(server->cursor, device,
 				event->suggested_output);
+}
+
+void
+swl_reapply_keyboard_config(SwlServer *server)
+{
+	struct xkb_context *context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+	struct xkb_keymap *keymap = xkb_keymap_new_from_names(context,
+			&server->config.xkb_rules, XKB_KEYMAP_COMPILE_NO_FLAGS);
+	if (!keymap) {
+		wlr_log(WLR_ERROR, "reload_config: failed to compile keymap, keeping current");
+		xkb_context_unref(context);
+		return;
+	}
+
+	wlr_keyboard_set_keymap(&server->kb_group->wlr_group->keyboard, keymap);
+	xkb_keymap_unref(keymap);
+	xkb_context_unref(context);
+
+	wlr_keyboard_set_repeat_info(&server->kb_group->wlr_group->keyboard,
+			server->config.repeat_rate, server->config.repeat_delay);
+
+	/* Recompute locked mods for numlock */
+	server->locked_mods = 0;
+	if (server->config.numlock) {
+		xkb_mod_index_t mod = xkb_keymap_mod_get_index(
+				server->kb_group->wlr_group->keyboard.keymap, XKB_MOD_NAME_NUM);
+		if (mod != XKB_MOD_INVALID)
+			server->locked_mods |= (uint32_t)1 << mod;
+	}
+	if (server->locked_mods)
+		wlr_keyboard_notify_modifiers(&server->kb_group->wlr_group->keyboard,
+				0, 0, server->locked_mods, 0);
+}
+
+void
+swl_reapply_pointer_config(SwlServer *server)
+{
+	SwlPointer *p;
+	wl_list_for_each(p, &server->pointers, link)
+		apply_libinput_settings(server, p->pointer);
 }

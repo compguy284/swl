@@ -86,5 +86,7 @@ typedef struct SwlConfig {
 
 void swl_config_defaults(SwlConfig *config);
 [[nodiscard]] int swl_config_load(SwlConfig *config, const char *path);
+void swl_config_free(SwlConfig *config);
+void swl_cmd_reload_config(SwlServer *server, const Arg *arg);
 
 #endif

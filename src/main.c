@@ -65,6 +65,7 @@ main(int argc, char *argv[])
 		if (swl_config_load(&server.config, config_path) < 0)
 			die("failed to load config: %s", config_path);
 	}
+	server.config_path = config_path ? strdup(config_path) : nullptr;
 
 	/* Wayland requires XDG_RUNTIME_DIR for creating its communications socket */
 	if (!getenv("XDG_RUNTIME_DIR"))

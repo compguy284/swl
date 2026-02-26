@@ -24,6 +24,7 @@ void swl_applyrules(SwlServer *server, Client *c);
 void swl_commands_set_server(SwlServer *s);
 void swl_commands_setup_listeners(SwlServer *server);
 void swl_handlesig(int signo);
+void swl_reapply_client_config(SwlServer *server);
 
 /* Internal listener callbacks needed by xwayland module */
 void swl_handle_map(struct wl_listener *listener, void *data);

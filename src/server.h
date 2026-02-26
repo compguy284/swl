@@ -138,10 +138,15 @@ struct SwlServer {
 
 	/* Configuration */
 	SwlConfig config;
+	char *config_path;
+
+	/* Tracked pointer devices for config reload */
+	struct wl_list pointers; /* SwlPointer.link */
 };
 
 void swl_server_setup(SwlServer *server);
 void swl_server_run(SwlServer *server, char *startup_cmd);
 void swl_server_cleanup(SwlServer *server);
+void swl_apply_config_runtime(SwlServer *server);
 
 #endif
