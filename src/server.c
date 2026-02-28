@@ -1,3 +1,5 @@
+#include <errno.h>
+#include <fcntl.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,9 +74,27 @@ struct wlr_renderer *fx_renderer_create(struct wlr_backend *backend);
 #include "xwayland.h"
 #endif
 
-static int
-handle_sighup(int signo, void *data)
+/* Self-pipe for SIGHUP: the raw signal handler writes a byte, the event
+ * loop reads it and triggers the reload.  This avoids relying on
+ * signalfd/sigprocmask staying intact (wlroots backends may alter the
+ * signal mask). */
+static int sighup_pipe[2] = {-1, -1};
+
+static void
+sighup_handler(int signo)
 {
+	(void)signo;
+	int saved_errno = errno;
+	write(sighup_pipe[1], "", 1);
+	errno = saved_errno;
+}
+
+static int
+sighup_readable(int fd, uint32_t mask, void *data)
+{
+	char buf;
+	while (read(fd, &buf, 1) > 0)
+		; /* drain */
 	SwlServer *server = data;
 	swl_cmd_reload_config(server, nullptr);
 	return 0;
@@ -137,8 +157,18 @@ swl_server_setup(SwlServer *server)
 	server->dpy = wl_display_create();
 	server->event_loop = wl_display_get_event_loop(server->dpy);
 
-	/* SIGHUP triggers config reload via the event loop (safe, not a raw signal handler) */
-	wl_event_loop_add_signal(server->event_loop, SIGHUP, handle_sighup, server);
+	/* SIGHUP triggers config reload via a self-pipe into the event loop */
+	if (pipe(sighup_pipe) == 0) {
+		fcntl(sighup_pipe[0], F_SETFL, O_NONBLOCK);
+		fcntl(sighup_pipe[1], F_SETFL, O_NONBLOCK);
+		fcntl(sighup_pipe[0], F_SETFD, FD_CLOEXEC);
+		fcntl(sighup_pipe[1], F_SETFD, FD_CLOEXEC);
+		wl_event_loop_add_fd(server->event_loop, sighup_pipe[0],
+				WL_EVENT_READABLE, sighup_readable, server);
+		struct sigaction sa_hup = {.sa_handler = sighup_handler, .sa_flags = SA_RESTART};
+		sigemptyset(&sa_hup.sa_mask);
+		sigaction(SIGHUP, &sa_hup, nullptr);
+	}
 
 	/* The backend is a wlroots feature which abstracts the underlying input and
 	 * output hardware. The autocreate option will choose the most suitable
@@ -557,6 +587,9 @@ swl_server_cleanup(SwlServer *server)
 	/* Destroy after the wayland display (when the monitors are already destroyed)
 	   to avoid destroying them with an invalid scene output. */
 	wlr_scene_node_destroy(&server->scene->tree.node);
+
+	if (sighup_pipe[0] >= 0) close(sighup_pipe[0]);
+	if (sighup_pipe[1] >= 0) close(sighup_pipe[1]);
 
 	swl_config_free(&server->config);
 	free(server->config_path);
