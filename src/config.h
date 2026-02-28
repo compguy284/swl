@@ -89,4 +89,8 @@ void swl_config_defaults(SwlConfig *config);
 void swl_config_free(SwlConfig *config);
 void swl_cmd_reload_config(SwlServer *server, const Arg *arg);
 
+typedef void (*SwlCmdFunc)(SwlServer *, const Arg *);
+SwlCmdFunc swl_find_action(const char *name);
+const char *swl_find_action_name(SwlCmdFunc func);
+
 #endif

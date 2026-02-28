@@ -117,6 +117,7 @@ src = files(
   'src/layer.c',
   'src/layout.c',
   'src/scroller.c',
+  'src/ipc.c',
   'src/output.c',
   'src/session.c',
   'src/util.c',
@@ -139,6 +140,12 @@ swl = executable(
   include_directories: include_directories('src'),
   dependencies: deps,
   link_with: toml_lib,
+  install: true,
+)
+
+swlmsg = executable(
+  'swlmsg',
+  'tools/swlmsg.c',
   install: true,
 )
 

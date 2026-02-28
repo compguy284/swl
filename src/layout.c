@@ -9,6 +9,7 @@
 #include "commands.h"
 #include "cursor.h"
 #include "idle.h"
+#include "ipc.h"
 #include "macros.h"
 #include "scroller.h"
 
@@ -54,6 +55,7 @@ swl_arrange(SwlServer *server, Monitor *m)
 
 	swl_scroller(server, m);
 
+	swl_ipc_notify_layout(server->ipc, m);
 	swl_motionnotify(server, 0, nullptr, 0, 0, 0, 0);
 	swl_check_idle_inhibitor(server, nullptr);
 }

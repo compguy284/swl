@@ -20,6 +20,7 @@
 #include "commands.h"
 #include "client.h"
 #include "cursor.h"
+#include "ipc.h"
 #include "layout.h"
 #include "output.h"
 #include "macros.h"
@@ -246,6 +247,7 @@ swl_focusclient(SwlServer *server, Client *c, int lift)
 	}
 
 	swl_printstatus(server);
+	swl_ipc_notify_focus(server->ipc, c);
 
 	if (!c) {
 		wlr_seat_keyboard_notify_clear_focus(server->seat);
@@ -318,6 +320,7 @@ swl_setfloating(SwlServer *server, Client *c, int floating)
 	}
 	swl_arrange(server, c->mon);
 	swl_printstatus(server);
+	swl_ipc_notify_floating(server->ipc, c);
 }
 
 void
@@ -346,6 +349,7 @@ swl_setfullscreen(SwlServer *server, Client *c, int fullscreen)
 	}
 	swl_arrange(server, c->mon);
 	swl_printstatus(server);
+	swl_ipc_notify_fullscreen(server->ipc, c);
 }
 
 void
@@ -664,6 +668,7 @@ swl_handle_map(struct wl_listener *listener, void *data)
 		createforeigntoplevel(c);
 
 	swl_printstatus(server);
+	swl_ipc_notify_window_open(server->ipc, c);
 
 unset_fullscreen:
 	m = c->mon ? c->mon : swl_xytomon(server, c->geom.x, c->geom.y);
@@ -724,6 +729,7 @@ swl_handle_unmap(struct wl_listener *listener, void *data)
 	if (c->foreign_toplevel)
 		wlr_foreign_toplevel_handle_v1_destroy(c->foreign_toplevel);
 
+	swl_ipc_notify_window_close(server->ipc, c);
 	wlr_scene_node_destroy(&c->scene->node);
 	swl_printstatus(server);
 	swl_motionnotify(server, 0, nullptr, 0, 0, 0, 0);
@@ -772,6 +778,7 @@ swl_handle_update_title(struct wl_listener *listener, void *data)
 	}
 	if (c == swl_focustop(c->server, c->mon))
 		swl_printstatus(c->server);
+	swl_ipc_notify_title(c->server->ipc, c);
 }
 
 static void

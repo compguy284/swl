@@ -12,6 +12,7 @@
 
 #include "config.h"
 #include "commands.h"
+#include "ipc.h"
 #include "macros.h"
 #include "scroller.h"
 
@@ -187,8 +188,6 @@ parse_color(const char *hex, float out[4])
 
 /* --------------- Lookup tables ---------------------------------------- */
 
-typedef void (*SwlCmdFunc)(SwlServer *, const Arg *);
-
 static const struct { const char *name; SwlCmdFunc func; } action_funcs[] = {
 	{ "spawn",            swl_cmd_spawn },
 	{ "killclient",       swl_cmd_killclient },
@@ -260,12 +259,22 @@ find_command(const char *name)
 
 /* --------------- Action lookup --------------------------------------- */
 
-static SwlCmdFunc
-find_action(const char *name)
+SwlCmdFunc
+swl_find_action(const char *name)
 {
 	for (size_t i = 0; i < LENGTH(action_funcs); i++) {
 		if (strcmp(action_funcs[i].name, name) == 0)
 			return action_funcs[i].func;
+	}
+	return nullptr;
+}
+
+const char *
+swl_find_action_name(SwlCmdFunc func)
+{
+	for (size_t i = 0; i < LENGTH(action_funcs); i++) {
+		if (action_funcs[i].func == func)
+			return action_funcs[i].name;
 	}
 	return nullptr;
 }
@@ -818,7 +827,7 @@ parse_key_bindings(toml_array_t *arr, SwlConfig *config)
 			fprintf(stderr, "swl_config_load: bind.key[%d] missing 'action'\n", i);
 			continue;
 		}
-		SwlCmdFunc func = find_action(action_d.u.s);
+		SwlCmdFunc func = swl_find_action(action_d.u.s);
 		if (!func) {
 			fprintf(stderr, "swl_config_load: bind.key[%d] unknown action '%s'\n", i, action_d.u.s);
 			free(action_d.u.s);
@@ -895,7 +904,7 @@ parse_mouse_bindings(toml_array_t *arr, SwlConfig *config)
 			fprintf(stderr, "swl_config_load: bind.mouse[%d] missing 'action'\n", i);
 			continue;
 		}
-		SwlCmdFunc func = find_action(action_d.u.s);
+		SwlCmdFunc func = swl_find_action(action_d.u.s);
 		if (!func) {
 			fprintf(stderr, "swl_config_load: bind.mouse[%d] unknown action '%s'\n", i, action_d.u.s);
 			free(action_d.u.s);
@@ -1099,6 +1108,7 @@ swl_cmd_reload_config(SwlServer *server, const Arg *arg)
 	swl_config_free(&server->config);
 	server->config = newcfg;
 	swl_apply_config_runtime(server);
+	swl_ipc_notify_config_reload(server->ipc);
 
 	wlr_log(WLR_INFO, "reload_config: configuration reloaded from '%s'",
 			server->config_path);

@@ -64,6 +64,7 @@ struct wlr_renderer *fx_renderer_create(struct wlr_backend *backend);
 #include "cursor.h"
 #include "idle.h"
 #include "input.h"
+#include "ipc.h"
 #include "layer.h"
 #include "layout.h"
 #include "macros.h"
@@ -458,6 +459,10 @@ swl_server_run(SwlServer *server, char *startup_cmd)
 		die("startup: display_add_socket_auto");
 	setenv("WAYLAND_DISPLAY", socket, 1);
 
+	server->ipc = swl_ipc_init(server);
+	if (server->ipc)
+		setenv("SWL_SOCK", server->ipc->sock_path, 1);
+
 	/* Start the backend. This will enumerate outputs and inputs, become the DRM
 	 * master, etc */
 	if (!wlr_backend_start(server->backend))
@@ -559,6 +564,7 @@ swl_server_cleanup(SwlServer *server)
 	wlr_xwayland_destroy(server->xwayland);
 	server->xwayland = nullptr;
 #endif
+	swl_ipc_cleanup(server->ipc);
 	wl_display_destroy_clients(server->dpy);
 	if (server->child_pid > 0) {
 		/* Reset SIGCHLD to default to prevent the handler from reaping

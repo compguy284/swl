@@ -33,6 +33,8 @@
 #include "types.h"
 #include "config.h"
 
+typedef struct swl_ipc SwlIpc;
+
 struct SwlServer {
 	/* Core wlroots objects */
 	struct wl_display *dpy;
@@ -142,6 +144,9 @@ struct SwlServer {
 
 	/* Tracked pointer devices for config reload */
 	struct wl_list pointers; /* SwlPointer.link */
+
+	/* IPC */
+	SwlIpc *ipc;
 };
 
 void swl_server_setup(SwlServer *server);

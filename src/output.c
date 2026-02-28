@@ -25,6 +25,7 @@
 #include "client.h"
 #include "commands.h"
 #include "cursor.h"
+#include "ipc.h"
 #include "layer.h"
 #include "layout.h"
 #include "macros.h"
@@ -88,6 +89,7 @@ swl_handle_new_output(struct wl_listener *listener, void *data)
 
 	wl_list_insert(&server->mons, &m->link);
 	swl_printstatus(server);
+	swl_ipc_notify_monitor(server->ipc, m, 1);
 
 	/* The xdg-protocol specifies:
 	 *
@@ -385,6 +387,7 @@ closemon(SwlServer *server, Monitor *m)
 	}
 	swl_focusclient(server, swl_focustop(server, server->selmon), 1);
 	swl_printstatus(server);
+	swl_ipc_notify_monitor(server->ipc, m, 0);
 }
 
 static void

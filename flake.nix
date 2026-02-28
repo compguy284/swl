@@ -44,6 +44,7 @@
                 ./meson.build
                 ./meson.options
                 ./src
+                ./tools
                 ./protocols
                 ./config
                 ./swl.1
