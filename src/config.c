@@ -761,25 +761,19 @@ parse_commands(toml_table_t *tab)
 		free(mk.u.s);
 	}
 
-	/* Count named commands (string arrays in table, excluding mod_key) */
-	/* We iterate known command names; extensible by checking all keys */
-	const char *cmd_names[] = { "terminal", "menu" };
-	size_t ncmd_names = LENGTH(cmd_names);
+	/* Discover all array keys in [commands] — each is a named command */
+	int narr = toml_table_narr(tab);
+	if (narr <= 0) return;
 
-	/* Count how many are actually present */
-	size_t present = 0;
-	for (size_t i = 0; i < ncmd_names; i++) {
-		toml_array_t *arr = toml_array_in(tab, cmd_names[i]);
-		if (arr) present++;
-	}
-
-	if (present == 0) return;
-
-	named_cmds = calloc(present, sizeof(NamedCommand));
+	named_cmds = calloc((size_t)narr, sizeof(NamedCommand));
 	named_cmds_count = 0;
 
-	for (size_t i = 0; i < ncmd_names; i++) {
-		toml_array_t *arr = toml_array_in(tab, cmd_names[i]);
+	/* Iterate all keys, pick up those that are arrays */
+	for (int i = 0; ; i++) {
+		const char *key = toml_key_in(tab, i);
+		if (!key) break;
+
+		toml_array_t *arr = toml_array_in(tab, key);
 		if (!arr) continue;
 
 		int n = toml_array_nelem(arr);
@@ -793,7 +787,7 @@ parse_commands(toml_table_t *tab)
 		}
 		argv[n] = nullptr;
 
-		named_cmds[named_cmds_count].name = strdup(cmd_names[i]);
+		named_cmds[named_cmds_count].name = strdup(key);
 		named_cmds[named_cmds_count].argv = argv;
 		named_cmds_count++;
 	}
