@@ -1,216 +1,135 @@
-# swl - dwm for Wayland
+# swl - a hackable Wayland compositor
 
-Join us on our [Discord server]  
-Or Matrix: [#dwl-official:matrix.org]  
-Or on our IRC channel: [#dwl on Libera Chat]
+swl is a compact, hackable compositor for [Wayland] built on [wlroots] and
+[scenefx]. It is a fork of [dwl], extending it with runtime configuration,
+a scrollable column layout, visual effects, IPC, and more -- while preserving
+the spirit of a small, understandable codebase.
 
-swl is a compact, hackable compositor for [Wayland] based on [wlroots]. It is
-intended to fill the same space in the Wayland world that [dwm] does in X11,
-primarily in terms of functionality, and secondarily in terms of
-philosophy. Like [dwm], swl is:
+## Features
 
-- Easy to understand, hack on, and extend with patches
-- One C source file (or a very small number) configurable via `config.h`
-- Tied to as few external dependencies as possible
+- **Scroller layout** -- a scrollable column-based layout where windows are
+  arranged in columns that scroll horizontally, with support for stacking
+  multiple windows within a single column
+- **Runtime TOML configuration** -- no recompilation needed, reload with a
+  keybinding or SIGHUP
+- **Visual effects** via [scenefx] -- rounded corners, window shadows, opacity
+- **IPC** -- Unix socket interface with the `swlmsg` client for scripting and
+  external tooling
+- **Directional focus and swap** -- navigate and rearrange windows by direction
+- **Lid switch handling** -- run a command (e.g. screen locker) on laptop lid
+  close
+- **Foreign toplevel management** -- protocol support for task switchers and
+  docks
+- **D-Bus session integration** -- automatic environment import and session
+  target lifecycle
+- **XWayland support** (optional)
 
-## Getting Started:
+## Building
 
-### Latest semi-stable [release]
-This is probably where you want to start. This builds against the [wlroots]
-versions currently shipping in major distributions. If your
-distribution's `wlroots` version is older, use an earlier swl [release].
-The `wlroots` version against which a given `swl` release builds is specified
-with each release on the [release] page
+swl uses [Meson] and requires the following dependencies:
 
-### Development branch [main]
-Active development progresses on the `main` branch. The `main` branch is built
-against the latest release of [wlroots]. PRs should target this branch unless they
-depend on functionality that is not in the current release of `wlroots`.
-
-### Preview branch [wlroots-next]
-The `wlroots-next` branch is built against the git version of [wlroots], which
-is unstable and changes frequently. PRs requiring functionality from the git
-version of `wlroots` should target this branch.
-  
-### Building swl
-swl has the following dependencies:
-- libinput
-- wayland
-- wlroots (compiled with the libinput backend)
+- wlroots-0.19
+- scenefx-0.4
+- wayland-server, wayland-protocols
 - xkbcommon
-- wayland-protocols (compile-time only)
-- pkg-config (compile-time only)
+- libinput
 
-swl has the following additional dependencies if XWayland support is enabled:
-- libxcb
-- libxcb-wm
-- wlroots (compiled with X11 support)
-- Xwayland (runtime only)
+Optional (for XWayland):
+- libxcb, xcb-icccm, Xwayland
 
-Install these (and their `-devel` versions if your distro has separate
-development packages) and run `make`. If you wish to build against a released
-version of wlroots (*you probably do*), use a [release] or a [0.x branch]. If
-you want to use the unstable development `main` branch, you need to use the git
-version of [wlroots].
+### With Nix
 
-To enable XWayland, you should uncomment its flags in `config.mk`.
+```sh
+nix develop
+meson setup build
+ninja -C build
+```
+
+### Without Nix
+
+```sh
+meson setup build
+ninja -C build
+sudo ninja -C build install
+```
+
+To enable XWayland:
+
+```sh
+meson setup build -Dxwayland=enabled
+```
 
 ## Configuration
 
-All configuration is done by editing `config.h` and recompiling, in the same
-manner as [dwm]. There is no way to separately restart the window manager in
-Wayland without restarting the entire display server, so any changes will take
-effect the next time swl is executed.
+Copy the default config and customize it:
 
-As in the [dwm] community, we encourage users to share patches they have
-created. Check out the [dwl-patches] repository!
+```sh
+mkdir -p ~/.config/swl
+cp /usr/share/swl/default.toml ~/.config/swl/config.toml
+```
 
-## Running swl
+Configuration is in TOML and covers appearance, keybindings, trackpad
+settings, monitor rules, effects, and more. Changes can be reloaded at runtime
+without restarting the compositor.
 
-swl can be run on any of the backends supported by wlroots. This means you can
-run it as a separate window inside either an X11 or Wayland session, as well as
-directly from a VT console. Depending on your distro's setup, you may need to
-add your user to the `video` and `input` groups before you can run swl on a
-VT. If you are using `elogind` or `systemd-logind` you need to install polkit;
-otherwise you need to add yourself in the `seat` group and enable/start the
-seatd daemon.
+See `config/default.toml` for all available options.
 
-When swl is run with no arguments, it will launch the server and begin handling
-any shortcuts configured in `config.h`. There is no status bar or other
-decoration initially; these are instead clients that can be run within the
-Wayland session. Do note that the default background color is grey. This can be
-modified in `config.h`.
+## Running
 
-If you would like to run a script or command automatically at startup, you can
-specify the command using the `-s` option. This command will be executed as a
-shell command using `/bin/sh -c`.  It serves a similar function to `.xinitrc`,
-but differs in that the display server will not shut down when this process
-terminates. Instead, swl will send this process a SIGTERM at shutdown and wait
-for it to terminate (if it hasn't already). This makes it ideal for execing into
-a user service manager like [s6], [anopa], [runit], [dinit], or [`systemd
---user`].
+swl can run on any wlroots-supported backend -- directly from a VT console, or
+nested inside an existing X11 or Wayland session. Depending on your setup, you
+may need to be in the `video` and `input` groups, or have `seatd` /
+`systemd-logind` / `elogind` running.
 
-Note: The `-s` command is run as a *child process* of swl, which means that it
-does not have the ability to affect the environment of swl or of any processes
-that it spawns. If you need to set environment variables that affect the entire
-swl session, these must be set prior to running swl. For example, Wayland
-requires a valid `XDG_RUNTIME_DIR`, which is usually set up by a session manager
-such as `elogind` or `systemd-logind`.  If your system doesn't do this
-automatically, you will need to configure it prior to launching `swl`, e.g.:
+```sh
+swl                     # start the compositor
+swl -s 'foot --server'  # start with a startup command
+```
 
-    export XDG_RUNTIME_DIR=/tmp/xdg-runtime-$(id -u)
-    mkdir -p $XDG_RUNTIME_DIR
-    swl
+The `-s` command receives status information on stdin (selected tags, window
+title, layout). This can be piped to a status bar. If your startup command
+does not consume stdin, close it:
 
-### Status information
+```sh
+swl -s 'foot --server <&-'
+```
 
-Information about selected layouts, current window title, app-id, and
-selected/occupied/urgent tags is written to the stdin of the `-s` command (see
-the `STATUS INFORMATION` section in `_swl_(1)`).  This information can be used to
-populate an external status bar with a script that parses the
-information. Failing to read this information will cause swl to block, so if you
-do want to run a startup command that does not consume the status information,
-you can close standard input with the `<&-` shell redirection, for example:
+## IPC
 
-    swl -s 'foot --server <&-'
+swl exposes a Unix socket at `$XDG_RUNTIME_DIR/swl-$WAYLAND_DISPLAY.sock`.
+Use the included `swlmsg` tool to send commands:
 
-If your startup command is a shell script, you can achieve the same inside the
-script with the line
-
-    exec <&-
-
-To get a list of status bars that work with swl consult our [wiki].
-
-### (Known) Java nonreparenting WM issue
-Certain IDEs don't display correctly unless an environmental variable for Java AWT
-indicates that the WM is nonreparenting.
-
-For some Java AWT-based IDEs, such as Xilinx Vivado and Microchip MPLAB X, the
-following environment variable needs to be set before running the IDE or swl:
-
-    export _JAVA_AWT_WM_NONREPARENTING=1
-
-## Replacements for X applications
-
-You can find a [list of useful resources on our wiki].
-
-## Background
-
-swl is not meant to provide every feature under the sun. Instead, like [dwm], it
-sticks to features which are necessary, simple, and straightforward to implement
-given the base on which it is built. Implemented default features are:
-
-- Any features provided by [dwm]/Xlib: simple window borders, tags, keybindings,
-  client rules, mouse move/resize. Providing a built-in status bar is an
-  exception to this goal, to avoid dependencies on font rendering and/or drawing
-  libraries when an external bar could work well.
-- Configurable multi-monitor layout support, including position and rotation
-- Configurable HiDPI/multi-DPI support
-- Idle-inhibit protocol which lets applications such as mpv disable idle
-  monitoring
-- Provide information to external status bars via stdout/stdin
-- Urgency hints via xdg-activate protocol
-- Support screen lockers via ext-session-lock-v1 protocol
-- Various Wayland protocols
-- XWayland support as provided by wlroots (can be enabled in `config.mk`)
-- Zero flickering - Wayland users naturally expect that "every frame is perfect"
-- Layer shell popups (used by Waybar)
-- Damage tracking provided by scenegraph API
-
-Given the Wayland architecture, swl has to implement features from [dwm] **and**
-the xorg-server. Because of this, it is impossible to maintain the original
-project goal of 2000 SLOC and have a reasonably complete compositor with
-features comparable to [dwm]. However, this does not mean that the code will grow
-indiscriminately. We will try to keep the code as small as possible.
-
-Features under consideration (possibly as patches) are:
-
-- Protocols made trivial by wlroots
-- Implement the text-input and input-method protocols to support IME once ibus
-  implements input-method v2 (see https://github.com/ibus/ibus/pull/2256 and
-  https://codeberg.org/dwl/dwl/pulls/235)
-
-Feature *non-goals* for the main codebase include:
-
-- Client-side decoration (any more than is necessary to tell the clients not to)
-- Client-initiated window management, such as move, resize, and close, which can
-  be done through the compositor
-- Animations and visual effects
+```sh
+swlmsg spawn foot
+swlmsg focusdir right
+```
 
 ## Acknowledgements
 
-swl began by extending the TinyWL example provided (CC0) by the sway/wlroots
-developers. This was made possible in many cases by looking at how sway
-accomplished something, then trying to do the same in as suckless a way as
-possible.
+swl is a fork of [dwl], created by Devin J. Pohly and the dwl community. dwl
+itself began by extending the TinyWL example provided (CC0) by the
+sway/wlroots developers.
 
-Many thanks to suckless.org and the [dwm] developers and community for the
-inspiration, and to the various contributors to the project, including:
+Many thanks to:
 
-- **Devin J. Pohly for creating and nurturing the fledgling project**
-- Alexander Courtis for the XWayland implementation
-- Guido Cella for the layer-shell protocol implementation, patch maintenance,
-  and for helping to keep the project running
-- Stivvo for output management and fullscreen support, and patch maintenance
+- **[dwl]** and its contributors for creating the foundation this project
+  builds on
+- **Devin J. Pohly** for creating and nurturing dwl
+- **suckless.org** and the [dwm] developers for the original inspiration
+- The **sway/wlroots** developers for the compositor library and TinyWL
+- **Alexander Courtis** for the XWayland implementation in dwl
+- **Guido Cella** for the layer-shell implementation, patch maintenance, and
+  helping keep dwl running
+- **Stivvo** for output management, fullscreen support, and patch maintenance
 
+## License
 
-[wlroots]: https://gitlab.freedesktop.org/wlroots
-[dwm]: https://dwm.suckless.org/
-[`systemd --user`]: https://wiki.archlinux.org/title/Systemd/User
-[#dwl on Libera Chat]: https://web.libera.chat/?channels=#dwl
-[0.7-rc1]: https://codeberg.org/dwl/dwl/releases/tag/v0.7-rc1
-[0.x branch]: https://codeberg.org/dwl/dwl/branches
-[anopa]: https://jjacky.com/anopa/
-[dinit]: https://davmac.org/projects/dinit/
-[dwl-patches]: https://codeberg.org/dwl/dwl-patches
-[list of useful resources on our wiki]: https://codeberg.org/dwl/dwl/wiki/Home#migrating-from-x
-[main]: https://codeberg.org/dwl/dwl/src/branch/main
-[wlroots-next]: https://codeberg.org/dwl/dwl/src/branch/wlroots-next
-[release]: https://codeberg.org/dwl/dwl/releases
-[runit]: http://smarden.org/runit/faq.html#userservices
-[s6]: https://skarnet.org/software/s6/
-[wlroots]: https://gitlab.freedesktop.org/wlroots/wlroots/
-[wiki]: https://codeberg.org/dwl/dwl/wiki/Home#compatible-status-bars
-[Discord server]: https://discord.gg/jJxZnrGPWN
+GPLv3 -- see [LICENSE](LICENSE). See also [LICENSE.dwm](LICENSE.dwm),
+[LICENSE.sway](LICENSE.sway), and [LICENSE.tinywl](LICENSE.tinywl).
+
 [Wayland]: https://wayland.freedesktop.org/
-[#dwl-official:matrix.org]: https://matrix.to/#/#dwl-official:matrix.org
+[wlroots]: https://gitlab.freedesktop.org/wlroots/wlroots/
+[scenefx]: https://github.com/wlrfx/scenefx
+[dwl]: https://codeberg.org/dwl/dwl
+[dwm]: https://dwm.suckless.org/
+[Meson]: https://mesonbuild.com/
