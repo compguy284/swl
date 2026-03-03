@@ -74,6 +74,23 @@ in
       '';
     };
 
-    xdg.portal.config.swl.default = [ "wlr" "gtk" ];
+    xdg.portal = {
+      enable = lib.mkDefault true;
+
+      config = {
+        swl = {
+          default = [ "gtk" ];
+          "org.freedesktop.impl.portal.ScreenCast" = [ "wlr" ];
+          "org.freedesktop.impl.portal.ScreenShot" = [ "wlr" ];
+          "org.freedesktop.impl.portal.Inhibit" = [ ];
+        };
+      };
+      extraPortals = with pkgs; [
+        xdg-desktop-portal-wlr
+        xdg-desktop-portal-gtk
+      ];
+      wlr.enable = lib.mkDefault true;
+      configPackages = [ cfg.package ];
+    };
   };
 }
