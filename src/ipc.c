@@ -88,11 +88,12 @@ format_client(char *buf, size_t sz, Client *c, Monitor *m)
 	const char *appid = swl_client_get_appid(c);
 	const char *monname = (m && m->wlr_output) ? m->wlr_output->name : "";
 	snprintf(buf, sz,
-		"title=\"%s\" appid=\"%s\" mon=\"%s\" floating=%d fullscreen=%d x=%d y=%d w=%d h=%d",
+		"title=\"%s\" appid=\"%s\" mon=\"%s\" floating=%d fullscreen=%d decoration=%s x=%d y=%d w=%d h=%d",
 		title ? title : "",
 		appid ? appid : "",
 		monname,
 		c->isfloating, c->isfullscreen,
+		c->decoration ? "ssd" : "csd",
 		c->geom.x, c->geom.y, c->geom.width, c->geom.height);
 }
 
@@ -638,8 +639,19 @@ swl_ipc_notify_window_open(SwlIpc *ipc, Client *c)
 		return;
 	char info[1024];
 	format_client(info, sizeof(info), c, c->mon);
-	ipc_broadcastf(ipc, SWL_IPC_EVENT_WINDOW_OPEN,
-		"event window_open %s\n", info);
+	Client *p = swl_client_get_parent(c);
+	if (p) {
+		const char *ptitle = swl_client_get_title(p);
+		const char *pappid = swl_client_get_appid(p);
+		ipc_broadcastf(ipc, SWL_IPC_EVENT_WINDOW_OPEN,
+			"event window_open %s parent_title=\"%s\" parent_appid=\"%s\"\n",
+			info,
+			ptitle ? ptitle : "",
+			pappid ? pappid : "");
+	} else {
+		ipc_broadcastf(ipc, SWL_IPC_EVENT_WINDOW_OPEN,
+			"event window_open %s\n", info);
+	}
 }
 
 void
