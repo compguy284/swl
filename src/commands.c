@@ -445,11 +445,15 @@ apply_buffer_effects(struct wlr_scene_buffer *buf, int sx, int sy, void *data)
 {
 	Client *c = data;
 	SwlServer *server = c->server;
-	int inner_radius = server->config.corner_radius > (int)c->bw
-		? server->config.corner_radius - (int)c->bw : 0;
+	int cr = server->config.corner_radius;
 
-	if (inner_radius > 0)
-		wlr_scene_buffer_set_corner_radius(buf, inner_radius);
+	if (cr > 0) {
+		/* SSD: clip buffers to inner radius (border frames the content).
+		 * CSD: clip buffers to full radius (solid backdrop behind content). */
+		int radius = c->decoration ? cr - (int)c->bw : cr;
+		if (radius > 0)
+			wlr_scene_buffer_set_corner_radius(buf, radius);
+	}
 	if (server->config.opacity < 1.0f)
 		wlr_scene_buffer_set_opacity(buf, server->config.opacity);
 }

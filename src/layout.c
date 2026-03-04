@@ -84,11 +84,15 @@ swl_resize(SwlServer *server, Client *c, struct wlr_box geo, int interact)
 	wlr_scene_node_set_position(&c->scene->node, c->geom.x, c->geom.y);
 	wlr_scene_node_set_position(&c->scene_surface->node, c->bw, c->bw);
 
-	/* Resize single border rect and compute hollow clip region */
+	/* Resize single border rect and compute clip region.
+	 * SSD clients get a hollow border (cutout interior).
+	 * CSD clients get a solid backdrop — their own decorations
+	 * (rounded corners, shadows) reveal the border color beneath. */
 	if (c->border) {
 		wlr_scene_rect_set_size(c->border, c->geom.width, c->geom.height);
 
-		if (c->bw > 0) {
+		if (c->bw > 0 && c->decoration) {
+			/* SSD: hollow out the interior */
 			int cr = c->server->config.corner_radius;
 			int inner_cr = cr > (int)c->bw ? cr - (int)c->bw : 0;
 			struct clipped_region hollow = {
@@ -101,6 +105,10 @@ swl_resize(SwlServer *server, Client *c, struct wlr_box geo, int interact)
 				.corners = corner_radii_all(inner_cr),
 			};
 			wlr_scene_rect_set_clipped_region(c->border, hollow);
+		} else {
+			/* CSD or no border: solid backdrop */
+			wlr_scene_rect_set_clipped_region(c->border,
+					clipped_region_get_default());
 		}
 	}
 
