@@ -618,11 +618,27 @@ position:
 			} else {
 				wlr_scene_node_set_enabled(&c->scene->node, true);
 
-				if (visible.x == c->geom.x && visible.width == c->geom.width) {
+				int ox = visible.x - c->geom.x;
+				int oy = visible.y - c->geom.y;
+				bool clipped = visible.x != c->geom.x
+					|| visible.width != c->geom.width;
+
+				if (!clipped) {
 					struct wlr_box clip;
 					swl_client_get_clip(c, &clip);
 					wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &clip);
+
+					/* Restore decoration state after prior clipping */
+					if (c->border) {
+						wlr_scene_node_set_position(&c->border->node, 0, 0);
+						int cr = server->config.corner_radius;
+						if (cr > 0)
+							c->border->corners = corner_radii_all(cr);
+					}
+					if (c->shadow)
+						wlr_scene_node_set_position(&c->shadow->node, 0, 0);
 				} else {
+					/* Clip surface to visible area */
 					int surface_origin_x = c->geom.x + (int)c->bw;
 					int surface_origin_y = c->geom.y + (int)c->bw;
 					struct wlr_box sclip = {
@@ -641,8 +657,64 @@ position:
 					}
 #endif
 					wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &sclip);
+
+					/* Clip border to visible area */
+					if (c->border) {
+						wlr_scene_node_set_position(&c->border->node, ox, oy);
+						wlr_scene_rect_set_size(c->border, visible.width, visible.height);
+
+						if (c->bw > 0) {
+							int cr = server->config.corner_radius;
+							int inner_cr = cr > (int)c->bw ? cr - (int)c->bw : 0;
+							bool left = (ox == 0);
+							bool right = (ox + visible.width == c->geom.width);
+							bool top = (oy == 0);
+							bool bottom = (oy + visible.height == c->geom.height);
+
+							/* Hollow interior in clipped border coords */
+							int hx = (int)c->bw - ox;
+							int hy = (int)c->bw - oy;
+							int hx1 = MAX(0, hx);
+							int hy1 = MAX(0, hy);
+							int hx2 = MIN(visible.width,
+								hx + c->geom.width - 2 * (int)c->bw);
+							int hy2 = MIN(visible.height,
+								hy + c->geom.height - 2 * (int)c->bw);
+
+							struct clipped_region hollow = {
+								.area = {
+									.x = hx1, .y = hy1,
+									.width = MAX(0, hx2 - hx1),
+									.height = MAX(0, hy2 - hy1),
+								},
+								.corners = corner_radii_new(
+									left && top ? inner_cr : 0,
+									right && top ? inner_cr : 0,
+									right && bottom ? inner_cr : 0,
+									left && bottom ? inner_cr : 0),
+							};
+							wlr_scene_rect_set_clipped_region(c->border, hollow);
+
+							if (cr > 0) {
+								c->border->corners = corner_radii_new(
+									left && top ? cr : 0,
+									right && top ? cr : 0,
+									right && bottom ? cr : 0,
+									left && bottom ? cr : 0);
+							}
+						}
+					}
+
+					/* Clip shadow to visible area */
+					if (c->shadow) {
+						wlr_scene_node_set_position(&c->shadow->node, ox, oy);
+						wlr_scene_shadow_set_size(c->shadow,
+							visible.width, visible.height);
+					}
 				}
 
+				if (c->border)
+					wlr_scene_node_set_enabled(&c->border->node, true);
 				if (c->shadow)
 					wlr_scene_node_set_enabled(&c->shadow->node, true);
 			}
