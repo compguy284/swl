@@ -95,8 +95,12 @@ clip_to_bounds(SwlServer *server, Client *c, const struct wlr_box *bounds)
 			&& visible.width == c->geom.width
 			&& visible.height == c->geom.height) {
 		/* Fully visible — restore default decoration state */
-		if (c->border)
+		if (c->border) {
 			wlr_scene_node_set_position(&c->border->node, 0, 0);
+			int cr = server->config.corner_radius;
+			if (cr > 0)
+				c->border->corners = corner_radii_all(cr);
+		}
 		if (c->shadow)
 			wlr_scene_node_set_position(&c->shadow->node, 0, 0);
 		return;
