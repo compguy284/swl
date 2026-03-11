@@ -460,9 +460,6 @@ commitnotify(struct wl_listener *listener, void *data)
 	Client *c = wl_container_of(listener, c, commit);
 	SwlServer *server = c->server;
 
-	if (!c->scene_surface)
-		return;
-
 	if (c->surface.xdg->initial_commit) {
 		swl_applyrules(server, c);
 		if (c->mon)
@@ -475,6 +472,9 @@ commitnotify(struct wl_listener *listener, void *data)
 		wlr_xdg_toplevel_set_size(c->surface.xdg->toplevel, 0, 0);
 		return;
 	}
+
+	if (!c->scene_surface)
+		return;
 
 	swl_resize(server, c, c->geom, (c->isfloating && !c->isfullscreen));
 	if (c->resize && c->resize <= c->surface.xdg->current.configure_serial)
