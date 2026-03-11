@@ -78,7 +78,9 @@
               xwayland
             ];
 
-            mesonFlags = lib.optionals enableXWayland [
+            mesonFlags = [
+              "-Dgit_hash=${self.shortRev or "dirty"}"
+            ] ++ lib.optionals enableXWayland [
               "-Dxwayland=enabled"
             ];
 

@@ -1,1 +1,2 @@
 option('xwayland', type: 'feature', value: 'disabled', description: 'XWayland support')
+option('git_hash', type: 'string', value: '', description: 'Git commit hash to embed in version string')

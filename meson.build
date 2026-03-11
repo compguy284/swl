@@ -44,6 +44,10 @@ if git.found()
 else
   version = meson.project_version()
 endif
+git_hash = get_option('git_hash')
+if git_hash != ''
+  version = version + '-' + git_hash
+endif
 add_project_arguments('-DVERSION="@0@"'.format(version), language: 'c')
 
 # Dependencies
