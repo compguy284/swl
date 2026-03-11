@@ -460,6 +460,9 @@ commitnotify(struct wl_listener *listener, void *data)
 	Client *c = wl_container_of(listener, c, commit);
 	SwlServer *server = c->server;
 
+	if (!c->scene_surface)
+		return;
+
 	if (c->surface.xdg->initial_commit) {
 		swl_applyrules(server, c);
 		if (c->mon)
@@ -734,6 +737,8 @@ swl_handle_unmap(struct wl_listener *listener, void *data)
 
 	swl_ipc_notify_window_close(server->ipc, c);
 	wlr_scene_node_destroy(&c->scene->node);
+	c->scene = nullptr;
+	c->scene_surface = nullptr;
 	swl_printstatus(server);
 	swl_motionnotify(server, 0, nullptr, 0, 0, 0, 0);
 }
