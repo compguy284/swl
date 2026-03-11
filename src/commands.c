@@ -313,11 +313,6 @@ swl_setfloating(SwlServer *server, Client *c, int floating)
 	wlr_scene_node_reparent(&c->scene->node,
 			server->layers[c->isfullscreen || (p && p->isfullscreen)
 			? LyrFS : c->isfloating ? LyrFloat : LyrTile]);
-	if (floating && !c->isfullscreen) {
-		c->geom.x = c->mon->w.x + (c->mon->w.width - c->geom.width) / 2;
-		c->geom.y = c->mon->w.y + (c->mon->w.height - c->geom.height) / 2;
-		swl_resize(server, c, c->geom, 0);
-	}
 	swl_arrange(server, c->mon);
 	swl_printstatus(server);
 	swl_ipc_notify_floating(server->ipc, c);
@@ -377,6 +372,11 @@ swl_applyrules(SwlServer *server, Client *c)
 	}
 	c->isfloating |= swl_client_is_float_type(c);
 	swl_setmon(server, c, mon);
+	if (c->isfloating) {
+		c->geom.x = c->mon->w.x + (c->mon->w.width - c->geom.width) / 2;
+		c->geom.y = c->mon->w.y + (c->mon->w.height - c->geom.height) / 2;
+		swl_resize(server, c, c->geom, 0);
+	}
 }
 
 /* ===== Static listener helpers ===== */
@@ -660,6 +660,9 @@ swl_handle_map(struct wl_listener *listener, void *data)
 	if ((p = swl_client_get_parent(c))) {
 		c->isfloating = true;
 		swl_setmon(server, c, p->mon);
+		c->geom.x = c->mon->w.x + (c->mon->w.width - c->geom.width) / 2;
+		c->geom.y = c->mon->w.y + (c->mon->w.height - c->geom.height) / 2;
+		swl_resize(server, c, c->geom, 0);
 	} else {
 		swl_applyrules(server, c);
 	}
