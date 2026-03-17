@@ -278,7 +278,7 @@ handle_query(SwlIpc *ipc, SwlIpcClient *ic, char *what)
 				break;
 			case ARG_SPAWN:
 				if (k->arg.v) {
-					const char **argv = k->arg.v;
+					const char **argv = (const char **)k->arg.v;
 					size_t aoff = 0;
 					aoff += (size_t)snprintf(argstr + aoff, sizeof(argstr) - aoff, " arg=\"");
 					for (const char **p = argv; *p && aoff < sizeof(argstr) - 2; p++) {

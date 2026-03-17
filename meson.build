@@ -53,7 +53,7 @@ add_project_arguments('-DVERSION="@0@"'.format(version), language: 'c')
 # Dependencies
 wayland_server = dependency('wayland-server')
 wayland_protos = dependency('wayland-protocols')
-scenefx = dependency('scenefx-0.4')
+scenefx = dependency('scenefx-0.4', include_type: 'system')
 wlroots = dependency('wlroots-0.19')
 xkbcommon = dependency('xkbcommon')
 libinput = dependency('libinput')

@@ -86,7 +86,7 @@ sighup_handler(int signo)
 {
 	(void)signo;
 	int saved_errno = errno;
-	write(sighup_pipe[1], "", 1);
+	if (write(sighup_pipe[1], "", 1)) {}
 	errno = saved_errno;
 }
 
