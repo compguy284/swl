@@ -82,6 +82,19 @@ typedef struct SwlConfig {
 	float blur_brightness;
 	float blur_contrast;
 	float blur_saturation;
+
+	/* Animations */
+	bool animations;
+	uint32_t anim_duration_open;
+	uint32_t anim_duration_move;
+	uint32_t anim_duration_close;
+	double anim_curve_open[4];   /* bezier control points {x1,y1,x2,y2} */
+	double anim_curve_move[4];
+	double anim_curve_close[4];
+	char anim_type_open[8];      /* "slide", "zoom", "fade" */
+	char anim_type_close[8];
+	float anim_fade_start_opacity;
+	float anim_zoom_ratio;
 } SwlConfig;
 
 void swl_config_defaults(SwlConfig *config);

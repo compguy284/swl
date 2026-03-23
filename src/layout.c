@@ -5,6 +5,7 @@
 #include <scenefx/types/wlr_scene.h>
 
 #include "layout.h"
+#include "animation.h"
 #include "client.h"
 #include "commands.h"
 #include "cursor.h"
@@ -189,6 +190,7 @@ swl_resize(SwlServer *server, Client *c, struct wlr_box geo, int interact)
 
 	bbox = interact ? &server->sgeom : &c->mon->w;
 	swl_client_set_bounds(c, geo.width, geo.height);
+	struct wlr_box old_geom = c->geom;
 	c->geom = geo;
 	if (!c->isfloating && !c->isfullscreen) {
 		/* Scroller clients may be positioned off-screen; only enforce minimum size */
@@ -198,8 +200,27 @@ swl_resize(SwlServer *server, Client *c, struct wlr_box geo, int interact)
 		swl_applybounds(c, bbox);
 	}
 
-	/* Position the client scene node and its surface within the border */
-	wlr_scene_node_set_position(&c->scene->node, c->geom.x, c->geom.y);
+	/* Start move animation if geometry changed and animations are enabled.
+	 * Don't animate during an open animation (let it finish first). */
+	if (server->config.animations && !c->isfloating && !c->isfullscreen
+			&& c->animation.action != AnimOpen
+			&& (old_geom.x != c->geom.x || old_geom.y != c->geom.y
+				|| old_geom.width != c->geom.width || old_geom.height != c->geom.height)
+			&& old_geom.width > 0) {
+		struct wlr_box start = c->animation.running
+			? c->animation.current : old_geom;
+		swl_animation_start(&c->animation, AnimMove,
+			server->config.anim_duration_move, &start, &c->geom);
+		swl_request_frame_all(server);
+	}
+
+	/* Position the client scene node and its surface within the border.
+	 * If an animation is running, rendermon() handles position updates. */
+	if (c->animation.running && server->config.animations) {
+		/* Don't snap position — let the animation drive it */
+	} else {
+		wlr_scene_node_set_position(&c->scene->node, c->geom.x, c->geom.y);
+	}
 	wlr_scene_node_set_position(&c->scene_surface->node, c->bw, c->bw);
 
 	/* Resize single border rect and compute hollow clip region */
@@ -238,5 +259,19 @@ swl_resize(SwlServer *server, Client *c, struct wlr_box geo, int interact)
 	 * re-enter swl_resize outside the scroller path. */
 	if (!c->isfloating && !c->isfullscreen)
 		clip_to_bounds(server, c, &c->mon->w);
+}
+
+void
+swl_clip_animated(SwlServer *server, Client *c)
+{
+	/* During animation, clip using the animated position instead of c->geom.
+	 * We temporarily swap in animation.current, clip, then restore. */
+	if (!c->mon)
+		return;
+	struct wlr_box saved = c->geom;
+	if (c->animation.running)
+		c->geom = c->animation.current;
+	clip_to_bounds(server, c, &c->mon->w);
+	c->geom = saved;
 }
 

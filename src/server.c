@@ -59,6 +59,7 @@ struct wlr_renderer *fx_renderer_create(struct wlr_backend *backend);
 #endif
 
 #include "server.h"
+#include "animation.h"
 #include "clipboard.h"
 #include "commands.h"
 #include "cursor.h"
@@ -133,6 +134,9 @@ swl_apply_config_runtime(SwlServer *server)
 
 	/* Client borders, shadows, corner radius */
 	swl_reapply_client_config(server);
+
+	/* Animation curves */
+	swl_animation_init_curves(&server->config);
 
 	/* Re-arrange all monitors */
 	wl_list_for_each(m, &server->mons, link)
@@ -276,6 +280,7 @@ swl_server_setup(SwlServer *server)
 	/* Set up our client lists, the xdg-shell and the layer-shell. */
 	wl_list_init(&server->clients);
 	wl_list_init(&server->fstack);
+	wl_list_init(&server->fadeout_clients);
 	wl_list_init(&server->pointers);
 
 	server->xdg_shell = wlr_xdg_shell_create(server->dpy, 6);
@@ -588,6 +593,13 @@ swl_server_cleanup(SwlServer *server)
 	/* If it's not destroyed manually, it will cause a use-after-free of wlr_seat.
 	 * Destroy it until it's fixed on the wlroots side */
 	wlr_backend_destroy(server->backend);
+
+	/* Clean up any remaining fadeout animations */
+	SwlFadeout *fo, *fo_tmp;
+	wl_list_for_each_safe(fo, fo_tmp, &server->fadeout_clients, link) {
+		wl_list_remove(&fo->link);
+		free(fo);
+	}
 
 	wl_display_destroy(server->dpy);
 	/* Destroy after the wayland display (when the monitors are already destroyed)

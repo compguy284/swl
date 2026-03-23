@@ -5,6 +5,7 @@
 #include <stddef.h>
 #include <wayland-server-core.h>
 #include <wlr/types/wlr_keyboard.h>
+#include "animation.h"
 #include <wlr/types/wlr_keyboard_group.h>
 #include <wlr/types/wlr_output.h>
 #include <scenefx/types/wlr_scene.h>
@@ -21,7 +22,7 @@
 /* enums */
 enum SwlCursorMode : unsigned int { CurNormal, CurPressed, CurMove, CurResize }; /* cursor */
 enum SwlClientType : unsigned int { XDGShell, LayerShell, X11 }; /* client types */
-enum SwlLayer : unsigned int { LyrBg, LyrBottom, LyrTile, LyrFloat, LyrTop, LyrFS, LyrOverlay, LyrBlock, NUM_LAYERS }; /* scene layers */
+enum SwlLayer : unsigned int { LyrBg, LyrBottom, LyrTile, LyrFloat, LyrTop, LyrFS, LyrFadeOut, LyrOverlay, LyrBlock, NUM_LAYERS }; /* scene layers */
 enum SwlScrollerCenter : unsigned int { ScrollCenterNever, ScrollCenterAlways, ScrollCenterOverflow };
 
 /* forward declarations */
@@ -91,6 +92,7 @@ typedef struct {
 	float scroller_cw;         /* column width: fraction (0<x<=1) or pixels (>1), 0 = use default */
 	int scroller_preset_idx;   /* index into preset_column_widths for cycling */
 	bool scroller_continuation; /* true = stacked below the preceding column head */
+	SwlAnimation animation;
 } Client;
 
 typedef struct {

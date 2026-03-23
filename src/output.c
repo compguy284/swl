@@ -22,6 +22,7 @@
 #include <wlr/types/wlr_session_lock_v1.h>
 
 #include "output.h"
+#include "animation.h"
 #include "client.h"
 #include "commands.h"
 #include "cursor.h"
@@ -33,6 +34,11 @@
 
 /* static forward declarations */
 static void rendermon(struct wl_listener *listener, void *data);
+static void set_buffer_opacity(struct wlr_scene_buffer *buf, int sx, int sy, void *data);
+
+struct opacity_data {
+	float opacity;
+};
 static void cleanupmon(struct wl_listener *listener, void *data);
 static void requestmonstate(struct wl_listener *listener, void *data);
 static void closemon(SwlServer *server, Monitor *m);
@@ -334,6 +340,14 @@ swl_dirtomon(SwlServer *server, enum wlr_direction dir)
 /* static helpers and per-monitor listeners */
 
 static void
+set_buffer_opacity(struct wlr_scene_buffer *buf, int sx, int sy, void *data)
+{
+	(void)sx; (void)sy;
+	struct opacity_data *od = data;
+	wlr_scene_buffer_set_opacity(buf, od->opacity);
+}
+
+static void
 rendermon(struct wl_listener *listener, void *data)
 {
 	/* This function is called every time an output is ready to display a frame,
@@ -343,6 +357,72 @@ rendermon(struct wl_listener *listener, void *data)
 	Client *c;
 	struct wlr_output_state pending = {0};
 	struct timespec now;
+	bool need_more_frames = false;
+
+	/* Tick fadeout (close) animations */
+	SwlFadeout *fo, *fo_tmp;
+	wl_list_for_each_safe(fo, fo_tmp, &server->fadeout_clients, link) {
+		if (!fo->animation.running) {
+			wlr_scene_node_destroy(&fo->snapshot->node);
+			wl_list_remove(&fo->link);
+			free(fo);
+			continue;
+		}
+		double factor = swl_animation_tick(&fo->animation);
+		if (factor >= 0) {
+			wlr_scene_node_set_position(&fo->snapshot->node,
+				fo->animation.current.x, fo->animation.current.y);
+			/* Fade opacity from start_opacity down to 0 */
+			float opacity = fo->start_opacity * (1.0f - (float)factor);
+			struct wlr_scene_node *child;
+			wl_list_for_each(child, &fo->snapshot->children, link) {
+				if (child->type == WLR_SCENE_NODE_BUFFER)
+					wlr_scene_buffer_set_opacity(
+						wlr_scene_buffer_from_node(child), opacity);
+			}
+			need_more_frames = true;
+		}
+	}
+
+	/* Tick client animations */
+	if (server->config.animations) {
+		wl_list_for_each(c, &server->clients, link) {
+			if (!c->animation.running)
+				continue;
+			double factor = swl_animation_tick(&c->animation);
+			if (factor >= 0) {
+				wlr_scene_node_set_position(&c->scene->node,
+					c->animation.current.x, c->animation.current.y);
+
+				/* Fade-in opacity for open animations */
+				if (c->animation.action == AnimOpen && c->scene_surface) {
+					float opacity = server->config.anim_fade_start_opacity
+						+ (1.0f - server->config.anim_fade_start_opacity) * (float)factor;
+					struct opacity_data od = { .opacity = opacity * server->config.opacity };
+					wlr_scene_node_for_each_buffer(&c->scene_surface->node,
+						set_buffer_opacity, &od);
+				}
+
+				/* Clip tiled clients to monitor bounds during animation */
+				if (!c->isfloating && !c->isfullscreen && c->mon)
+					swl_clip_animated(server, c);
+
+				need_more_frames = true;
+			}
+			/* When animation finishes, snap to final position */
+			if (!c->animation.running) {
+				wlr_scene_node_set_position(&c->scene->node,
+					c->geom.x, c->geom.y);
+				if (c->scene_surface) {
+					struct opacity_data od = { .opacity = server->config.opacity };
+					wlr_scene_node_for_each_buffer(&c->scene_surface->node,
+						set_buffer_opacity, &od);
+				}
+				if (!c->isfloating && !c->isfullscreen && c->mon)
+					swl_clip_animated(server, c);
+			}
+		}
+	}
 
 	/* Render if no XDG clients have an outstanding resize and are visible on
 	 * this monitor. */
@@ -358,6 +438,9 @@ skip:
 	clock_gettime(CLOCK_MONOTONIC, &now);
 	wlr_scene_output_send_frame_done(m->scene_output, &now);
 	wlr_output_state_finish(&pending);
+
+	if (need_more_frames)
+		wlr_output_schedule_frame(m->wlr_output);
 }
 
 static void

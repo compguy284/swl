@@ -59,6 +59,19 @@ brightness = 1.0
 contrast = 1.0
 saturation = 1.0
 
+[animations]
+enabled = false
+duration_open = 400
+duration_move = 500
+duration_close = 300
+type_open = "slide"
+type_close = "fade"
+curve_open = [0.46, 1.0, 0.29, 0.99]
+curve_move = [0.46, 1.0, 0.29, 0.99]
+curve_close = [0.46, 1.0, 0.29, 0.99]
+fade_start_opacity = 0.5
+zoom_ratio = 0.3
+
 [commands]
 mod_key = "alt"
 terminal = ["foot"]

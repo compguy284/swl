@@ -97,6 +97,7 @@ struct SwlServer {
 	/* Client lists */
 	struct wl_list clients; /* Client.link — tiling order */
 	struct wl_list fstack;  /* Client.flink — focus order */
+	struct wl_list fadeout_clients; /* SwlFadeout.link — close animation snapshots */
 
 	/* Misc */
 	pid_t child_pid;

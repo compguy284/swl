@@ -157,6 +157,23 @@ swl_config_defaults(SwlConfig *config)
 	config->blur_enabled = false;
 	config->blur_num_passes = 2;
 	config->blur_radius = 5;
+
+	/* Animations */
+	config->animations = false;
+	config->anim_duration_open = 400;
+	config->anim_duration_move = 500;
+	config->anim_duration_close = 300;
+	/* Default curve: ease-out-quint-ish */
+	config->anim_curve_open[0] = 0.46; config->anim_curve_open[1] = 1.0;
+	config->anim_curve_open[2] = 0.29; config->anim_curve_open[3] = 0.99;
+	config->anim_curve_move[0] = 0.46; config->anim_curve_move[1] = 1.0;
+	config->anim_curve_move[2] = 0.29; config->anim_curve_move[3] = 0.99;
+	config->anim_curve_close[0] = 0.46; config->anim_curve_close[1] = 1.0;
+	config->anim_curve_close[2] = 0.29; config->anim_curve_close[3] = 0.99;
+	strcpy(config->anim_type_open, "slide");
+	strcpy(config->anim_type_close, "fade");
+	config->anim_fade_start_opacity = 0.5f;
+	config->anim_zoom_ratio = 0.3f;
 	config->blur_noise = 0.02f;
 	config->blur_brightness = 1.0f;
 	config->blur_contrast = 1.0f;
@@ -653,6 +670,64 @@ parse_effects(toml_table_t *tab, SwlConfig *config)
 	}
 }
 
+static void
+parse_bezier_array(toml_array_t *arr, double out[4])
+{
+	if (toml_array_nelem(arr) != 4)
+		return;
+	for (int i = 0; i < 4; i++) {
+		toml_datum_t v = toml_double_at(arr, i);
+		if (v.ok)
+			out[i] = v.u.d;
+	}
+}
+
+static void
+parse_animations(toml_table_t *tab, SwlConfig *config)
+{
+	toml_datum_t d;
+
+	d = toml_bool_in(tab, "enabled");
+	if (d.ok) config->animations = d.u.b;
+
+	d = toml_int_in(tab, "duration_open");
+	if (d.ok) config->anim_duration_open = (uint32_t)d.u.i;
+
+	d = toml_int_in(tab, "duration_move");
+	if (d.ok) config->anim_duration_move = (uint32_t)d.u.i;
+
+	d = toml_int_in(tab, "duration_close");
+	if (d.ok) config->anim_duration_close = (uint32_t)d.u.i;
+
+	d = toml_string_in(tab, "type_open");
+	if (d.ok) {
+		snprintf(config->anim_type_open, sizeof(config->anim_type_open), "%s", d.u.s);
+		free(d.u.s);
+	}
+
+	d = toml_string_in(tab, "type_close");
+	if (d.ok) {
+		snprintf(config->anim_type_close, sizeof(config->anim_type_close), "%s", d.u.s);
+		free(d.u.s);
+	}
+
+	d = toml_double_in(tab, "fade_start_opacity");
+	if (d.ok) config->anim_fade_start_opacity = (float)d.u.d;
+
+	d = toml_double_in(tab, "zoom_ratio");
+	if (d.ok) config->anim_zoom_ratio = (float)d.u.d;
+
+	toml_array_t *arr;
+	arr = toml_array_in(tab, "curve_open");
+	if (arr) parse_bezier_array(arr, config->anim_curve_open);
+
+	arr = toml_array_in(tab, "curve_move");
+	if (arr) parse_bezier_array(arr, config->anim_curve_move);
+
+	arr = toml_array_in(tab, "curve_close");
+	if (arr) parse_bezier_array(arr, config->anim_curve_close);
+}
+
 static int
 parse_rules(toml_array_t *arr, SwlConfig *config)
 {
@@ -1001,6 +1076,11 @@ swl_config_load(SwlConfig *config, const char *path)
 	toml_table_t *effects = toml_table_in(root, "effects");
 	if (effects)
 		parse_effects(effects, config);
+
+	/* [animations] */
+	toml_table_t *animations = toml_table_in(root, "animations");
+	if (animations)
+		parse_animations(animations, config);
 
 	/* [commands] -- must be parsed before keybinds */
 	toml_table_t *commands = toml_table_in(root, "commands");

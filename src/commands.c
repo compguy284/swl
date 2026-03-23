@@ -18,6 +18,7 @@
 #include <wlr/types/wlr_xdg_shell.h>
 
 #include "commands.h"
+#include "animation.h"
 #include "client.h"
 #include "cursor.h"
 #include "ipc.h"
@@ -673,6 +674,31 @@ swl_handle_map(struct wl_listener *listener, void *data)
 	if (!swl_client_is_unmanaged(c))
 		createforeigntoplevel(c);
 
+	/* Start open animation if enabled */
+	if (server->config.animations && !swl_client_is_unmanaged(c)) {
+		struct wlr_box initial = c->geom;
+		if (strcmp(server->config.anim_type_open, "zoom") == 0) {
+			/* Zoom: start from center, scaled down */
+			float r = server->config.anim_zoom_ratio;
+			int dw = (int)(c->geom.width * (1.0f - r));
+			int dh = (int)(c->geom.height * (1.0f - r));
+			initial.x += dw / 2;
+			initial.y += dh / 2;
+			initial.width -= dw;
+			initial.height -= dh;
+		} else if (strcmp(server->config.anim_type_open, "fade") == 0) {
+			/* Fade: same position, opacity handled in rendermon */
+		} else {
+			/* Slide: start from below the monitor */
+			if (c->mon)
+				initial.y = c->mon->w.y + c->mon->w.height;
+		}
+		swl_animation_start(&c->animation, AnimOpen,
+			server->config.anim_duration_open, &initial, &c->geom);
+		wlr_scene_node_set_position(&c->scene->node, initial.x, initial.y);
+		swl_request_frame_all(server);
+	}
+
 	swl_printstatus(server);
 	swl_ipc_notify_window_open(server->ipc, c);
 
@@ -736,6 +762,38 @@ swl_handle_unmap(struct wl_listener *listener, void *data)
 		wlr_foreign_toplevel_handle_v1_destroy(c->foreign_toplevel);
 
 	swl_ipc_notify_window_close(server->ipc, c);
+
+	/* Start close animation if enabled */
+	if (server->config.animations && c->scene && !swl_client_is_unmanaged(c)) {
+		struct wlr_scene_tree *snapshot = swl_scene_tree_snapshot(
+			&c->scene->node, server->layers[LyrFadeOut]);
+		if (snapshot) {
+			SwlFadeout *fo = ecalloc(1, sizeof(*fo));
+			fo->snapshot = snapshot;
+			fo->start_opacity = server->config.opacity;
+
+			struct wlr_box target = c->geom;
+			if (strcmp(server->config.anim_type_close, "zoom") == 0) {
+				float r = server->config.anim_zoom_ratio;
+				int dw = (int)(c->geom.width * (1.0f - r));
+				int dh = (int)(c->geom.height * (1.0f - r));
+				target.x += dw / 2;
+				target.y += dh / 2;
+				target.width -= dw;
+				target.height -= dh;
+			} else if (strcmp(server->config.anim_type_close, "slide") == 0) {
+				if (c->mon)
+					target.y = c->mon->w.y + c->mon->w.height;
+			}
+			/* "fade" type: same position, just opacity fade */
+
+			swl_animation_start(&fo->animation, AnimClose,
+				server->config.anim_duration_close, &c->geom, &target);
+			wl_list_insert(&server->fadeout_clients, &fo->link);
+			swl_request_frame_all(server);
+		}
+	}
+
 	wlr_scene_node_destroy(&c->scene->node);
 	c->scene = nullptr;
 	c->scene_surface = nullptr;

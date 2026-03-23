@@ -111,6 +111,7 @@ endforeach
 src = files(
   'src/main.c',
   'src/server.c',
+  'src/animation.c',
   'src/config.c',
   'src/client.c',
   'src/commands.c',
