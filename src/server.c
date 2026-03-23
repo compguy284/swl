@@ -411,6 +411,9 @@ swl_server_setup(SwlServer *server)
 		fprintf(stderr, "failed to setup XWayland X server, continuing without it\n");
 	}
 #endif
+
+	/* Bake animation curves from initial config */
+	swl_animation_init_curves(&server->config);
 }
 
 static void

@@ -86,6 +86,7 @@ swl_animation_tick(SwlAnimation *anim)
 
 	if (t >= 1.0) {
 		anim->running = false;
+		anim->action = AnimNone;
 		anim->current = anim->target;
 		return 1.0;
 	}
