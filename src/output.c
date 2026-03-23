@@ -425,10 +425,13 @@ rendermon(struct wl_listener *listener, void *data)
 	}
 
 	/* Render if no XDG clients have an outstanding resize and are visible on
-	 * this monitor. */
-	wl_list_for_each(c, &server->clients, link) {
-		if (c->resize && !c->isfloating && swl_client_is_rendered_on_mon(c, m) && !swl_client_is_stopped(c))
-			goto skip;
+	 * this monitor.  Skip the check for clients with an active animation —
+	 * we must keep committing to show animation progress. */
+	if (!need_more_frames) {
+		wl_list_for_each(c, &server->clients, link) {
+			if (c->resize && !c->isfloating && swl_client_is_rendered_on_mon(c, m) && !swl_client_is_stopped(c))
+				goto skip;
+		}
 	}
 
 	wlr_scene_output_commit(m->scene_output, nullptr);
