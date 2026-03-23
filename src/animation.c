@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdlib.h>
 #include <time.h>
 #include <scenefx/types/wlr_scene.h>
@@ -50,7 +51,13 @@ swl_bezier_lookup(const SwlVec2 *points, int count, double t)
 		else
 			up = mid;
 	}
-	return points[up].y;
+
+	/* Linearly interpolate between the two bounding points */
+	double dx = points[up].x - points[down].x;
+	if (dx < 1e-9)
+		return points[up].y;
+	double frac = (t - points[down].x) / dx;
+	return points[down].y + (points[up].y - points[down].y) * frac;
 }
 
 void
@@ -102,15 +109,15 @@ swl_animation_tick(SwlAnimation *anim)
 
 	double factor = swl_bezier_lookup(curve, SWL_BEZIER_POINTS, t);
 
-	/* Interpolate geometry */
+	/* Interpolate geometry (round instead of truncate to avoid undershoot) */
 	anim->current.x = anim->initial.x
-		+ (int)((anim->target.x - anim->initial.x) * factor);
+		+ (int)lround((anim->target.x - anim->initial.x) * factor);
 	anim->current.y = anim->initial.y
-		+ (int)((anim->target.y - anim->initial.y) * factor);
+		+ (int)lround((anim->target.y - anim->initial.y) * factor);
 	anim->current.width = anim->initial.width
-		+ (int)((anim->target.width - anim->initial.width) * factor);
+		+ (int)lround((anim->target.width - anim->initial.width) * factor);
 	anim->current.height = anim->initial.height
-		+ (int)((anim->target.height - anim->initial.height) * factor);
+		+ (int)lround((anim->target.height - anim->initial.height) * factor);
 
 	return factor;
 }
