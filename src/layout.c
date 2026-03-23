@@ -95,15 +95,21 @@ clip_to_bounds(SwlServer *server, Client *c, const struct wlr_box *bounds)
 	if (ox == 0 && oy == 0
 			&& visible.width == c->geom.width
 			&& visible.height == c->geom.height) {
-		/* Fully visible — restore default decoration state */
+		/* Fully visible — restore default decoration and surface clip */
+		struct wlr_box clip;
+		swl_client_get_clip(c, &clip);
+		wlr_scene_subsurface_tree_set_clip(&c->scene_surface->node, &clip);
 		if (c->border) {
 			wlr_scene_node_set_position(&c->border->node, 0, 0);
+			wlr_scene_rect_set_size(c->border, c->geom.width, c->geom.height);
 			int cr = server->config.corner_radius;
 			if (cr > 0)
 				c->border->corners = corner_radii_all(cr);
 		}
-		if (c->shadow)
+		if (c->shadow) {
 			wlr_scene_node_set_position(&c->shadow->node, 0, 0);
+			wlr_scene_shadow_set_size(c->shadow, c->geom.width, c->geom.height);
+		}
 		return;
 	}
 
