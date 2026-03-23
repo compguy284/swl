@@ -285,6 +285,8 @@ swl_xytonode(SwlServer *server, double x, double y,
 	int layer;
 
 	for (layer = NUM_LAYERS - 1; !surface && layer >= 0; layer--) {
+		if (layer == LyrFadeOut)
+			continue; /* fadeout snapshots are non-interactive */
 		if (!(node = wlr_scene_node_at(&server->layers[layer]->node,
 				x, y, nx, ny)))
 			continue;
