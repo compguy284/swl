@@ -103,6 +103,10 @@
           default = swl;
           swl = swl;
           swl-xwayland = swl.override { enableXWayland = true; };
+          swl-debug = swl.overrideAttrs (old: {
+            mesonBuildType = "debug";
+            dontStrip = true;
+          });
         };
 
         devShells.default = pkgs.mkShell {
