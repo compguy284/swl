@@ -771,6 +771,11 @@ swl_handle_unmap(struct wl_listener *listener, void *data)
 			SwlFadeout *fo = ecalloc(1, sizeof(*fo));
 			fo->snapshot = snapshot;
 			fo->start_opacity = server->config.opacity;
+			fo->fade_opacity = true;
+
+			/* Position snapshot at the client's current location */
+			wlr_scene_node_set_position(&snapshot->node,
+				c->geom.x, c->geom.y);
 
 			struct wlr_box target = c->geom;
 			if (strcmp(server->config.anim_type_close, "zoom") == 0) {
@@ -782,6 +787,7 @@ swl_handle_unmap(struct wl_listener *listener, void *data)
 				target.width -= dw;
 				target.height -= dh;
 			} else if (strcmp(server->config.anim_type_close, "slide") == 0) {
+				fo->fade_opacity = false;
 				if (c->mon)
 					target.y = c->mon->w.y + c->mon->w.height;
 			}

@@ -35,6 +35,7 @@ typedef struct {
 	struct wlr_scene_tree *snapshot;
 	SwlAnimation animation;
 	float start_opacity;
+	bool fade_opacity;       /* true for fade/zoom, false for slide */
 } SwlFadeout;
 
 /* Pre-baked curves for each action type */

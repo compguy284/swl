@@ -372,13 +372,15 @@ rendermon(struct wl_listener *listener, void *data)
 		if (factor >= 0) {
 			wlr_scene_node_set_position(&fo->snapshot->node,
 				fo->animation.current.x, fo->animation.current.y);
-			/* Fade opacity from start_opacity down to 0 */
-			float opacity = fo->start_opacity * (1.0f - (float)factor);
-			struct wlr_scene_node *child;
-			wl_list_for_each(child, &fo->snapshot->children, link) {
-				if (child->type == WLR_SCENE_NODE_BUFFER)
-					wlr_scene_buffer_set_opacity(
-						wlr_scene_buffer_from_node(child), opacity);
+			/* Fade opacity for fade/zoom types; slide keeps full opacity */
+			if (fo->fade_opacity) {
+				float opacity = fo->start_opacity * (1.0f - (float)factor);
+				struct wlr_scene_node *child;
+				wl_list_for_each(child, &fo->snapshot->children, link) {
+					if (child->type == WLR_SCENE_NODE_BUFFER)
+						wlr_scene_buffer_set_opacity(
+							wlr_scene_buffer_from_node(child), opacity);
+				}
 			}
 			need_more_frames = true;
 		}
